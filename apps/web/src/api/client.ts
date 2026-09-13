@@ -67,4 +67,6 @@ async function tryRefresh(refreshToken: string): Promise<boolean> {
 export const api = {
   get: (path: string) => rawRequest(path),
   post: (path: string, data?: any) => rawRequest(path, { method: 'POST', body: JSON.stringify(data || {}) }),
+  patch: (path: string, data?: any) => rawRequest(path, { method: 'PATCH', body: JSON.stringify(data || {}) }),
+  del: (path: string, data?: any) => rawRequest(path, { method: 'DELETE', body: JSON.stringify(data || {}) }),
 };

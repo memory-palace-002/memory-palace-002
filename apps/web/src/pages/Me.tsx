@@ -48,11 +48,11 @@ export default function MePage() {
       <div
         className="paper-card"
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}
-        onClick={() => toast('「宫殿列表」将在板块②开放', 'info')}
+        onClick={() => navigate('/palaces')}
       >
         <div>
-          <div style={{ fontWeight: 500 }}>{personalPalace?.name || '我的回忆宫殿'}</div>
-          <div className="hint" style={{ marginTop: 4 }}>个人宫殿 · 展示柜功能建设中</div>
+          <div style={{ fontWeight: 500 }}>{personalPalace?.name || '我的小角落'}</div>
+          <div className="hint" style={{ marginTop: 4 }}>个人角落 · 点击查看全部角落</div>
         </div>
         <span style={{ color: 'var(--color-text-secondary)' }}>›</span>
       </div>

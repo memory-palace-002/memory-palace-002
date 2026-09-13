@@ -170,6 +170,50 @@ a { color: inherit; text-decoration: none; }
   .desktop-shell .page-body { max-width: 1200px; margin: 0 auto; }
 }
 
+/* ===== 板块②：角落列表 / 成员 / 邀请码 ===== */
+.palace-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+@media (min-width: 768px) {
+  .palace-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.palace-card { cursor: pointer; transition: box-shadow 0.15s, transform 0.15s; }
+.palace-card:hover { box-shadow: var(--shadow-floating); transform: translateY(-1px); }
+
+.tag {
+  display: inline-block; flex-shrink: 0;
+  font-size: 12px; line-height: 20px; padding: 0 10px;
+  border-radius: var(--radius-tag);
+}
+.tag-personal { background: var(--color-bg-secondary); color: var(--color-text-secondary); }
+.tag-public { background: var(--color-primary); color: var(--color-surface); }
+
+.badge {
+  display: inline-block; flex-shrink: 0;
+  font-size: 11px; line-height: 18px; padding: 0 8px; border-radius: var(--radius-tag);
+}
+.badge-owner { background: var(--color-accent); color: var(--color-surface); }
+.badge-member { background: var(--color-bg-secondary); color: var(--color-text-secondary); }
+
+.member-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--color-border); }
+.member-row:last-child { border-bottom: none; }
+.avatar-mini {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  background: var(--color-primary); color: var(--color-surface);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700;
+}
+
+.code-display {
+  font-family: var(--font-serif); font-size: 30px; letter-spacing: 8px;
+  text-align: center; padding: 16px;
+  background: var(--color-bg-secondary); border-radius: var(--radius-input);
+  user-select: all;
+}
+
+/* 桌面顶部导航链接 */
+.nav-links { position: absolute; right: 24px; display: flex; gap: 20px; }
+.nav-links a { font-size: 14px; color: var(--color-text-secondary); }
+.nav-links a.active { color: var(--color-primary); }
+
 /* 双端显隐（§4.1）：移动元素仅手机显示，桌面元素仅电脑显示 */
 .mobile-only { display: flex; }
 .desktop-only { display: none; }
