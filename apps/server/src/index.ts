@@ -1,4 +1,4 @@
-// 回忆宫殿 后端服务入口（板块①：地基与账号）
+// 小角落 后端服务入口（板块①：地基与账号）
 import express from 'express';
 import { authRouter } from './auth';
 

@@ -48,7 +48,7 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       const { isNewUser } = await loginWithSms(phone, code);
-      toast(isNewUser ? '注册成功，欢迎来到回忆宫殿' : '登录成功');
+      toast(isNewUser ? '注册成功，欢迎来到小角落' : '登录成功');
       navigate('/me', { replace: true });
     } catch (e: any) {
       toast(e.message || '登录失败', 'error');
