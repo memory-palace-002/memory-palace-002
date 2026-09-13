@@ -26,6 +26,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [createOpen, setCreateOpen] = useState(searchParams.get('create') === '1');
   const [joinOpen, setJoinOpen] = useState(false);
+  const [createType, setCreateType] = useState<'personal' | 'public'>('public');
   const [newName, setNewName] = useState('');
   const [joinCode, setJoinCode] = useState('');
   const [busy, setBusy] = useState(false);
@@ -57,8 +58,8 @@ export default function HomePage() {
     if (busy) return;
     setBusy(true);
     try {
-      await api.post('/palaces', { name: newName.trim() });
-      toast('公共角落创建成功');
+      await api.post('/palaces', { name: newName.trim(), type: createType });
+      toast(createType === 'personal' ? '个人角落创建成功' : '公共角落创建成功');
       setCreateOpen(false);
       setNewName('');
       await load();
@@ -93,11 +94,22 @@ export default function HomePage() {
       </div>
 
       {/* 操作入口 */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 24 }}>
-        <button className="btn btn-primary" style={{ height: 44 }} onClick={() => setCreateOpen(true)}>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
+        <button
+          className="btn btn-primary"
+          style={{ height: 44, flex: '1 1 160px' }}
+          onClick={() => { setCreateType('personal'); setCreateOpen(true); }}
+        >
+          ＋ 新建个人角落
+        </button>
+        <button
+          className="btn btn-primary"
+          style={{ height: 44, flex: '1 1 160px', background: 'var(--color-accent)' }}
+          onClick={() => { setCreateType('public'); setCreateOpen(true); }}
+        >
           ＋ 新建公共角落
         </button>
-        <button className="btn btn-secondary" style={{ height: 44 }} onClick={() => setJoinOpen(true)}>
+        <button className="btn btn-secondary" style={{ height: 44, flex: '1 1 160px' }} onClick={() => setJoinOpen(true)}>
           输入邀请码
         </button>
       </div>
@@ -136,11 +148,24 @@ export default function HomePage() {
 
       <div style={{ height: 80 }} />
 
-      {/* 新建公共角落抽屉 */}
+      {/* 新建角落抽屉（个人/公共可切换） */}
       {createOpen && (
         <Sheet onClose={() => setCreateOpen(false)}>
-          <div className="section-title" style={{ marginBottom: 8 }}>新建公共角落</div>
-          <div className="hint" style={{ marginBottom: 16 }}>公共角落可以邀请家人朋友一起摆放物品</div>
+          <div className="section-title" style={{ marginBottom: 12 }}>新建角落</div>
+          <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
+            <button
+              className={`type-toggle ${createType === 'personal' ? 'active' : ''}`}
+              onClick={() => setCreateType('personal')}
+            >
+              🔒 个人角落<small>只属于我自己</small>
+            </button>
+            <button
+              className={`type-toggle ${createType === 'public' ? 'active' : ''}`}
+              onClick={() => setCreateType('public')}
+            >
+              👥 公共角落<small>可邀请家人朋友</small>
+            </button>
+          </div>
           <input
             className="input"
             placeholder="给角落起个名字（1~20 个字）"
@@ -154,7 +179,7 @@ export default function HomePage() {
             disabled={!newName.trim() || busy}
             onClick={handleCreate}
           >
-            创建
+            创建{createType === 'personal' ? '个人' : '公共'}角落
           </button>
         </Sheet>
       )}

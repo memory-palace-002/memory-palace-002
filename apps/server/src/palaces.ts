@@ -58,15 +58,16 @@ palacesRouter.get('/', requireAuth, (req, res) => {
   res.json({ code: 0, message: 'ok', data: { palaces: data } });
 });
 
-/* ---------- P2 创建公共角落 ---------- */
+/* ---------- P2 创建角落（个人/公共均可，产品决议：个人角落可多个） ---------- */
 palacesRouter.post('/', requireAuth, (req, res) => {
   const userId = (req as any).userId as string;
   const name = String((req.body || {}).name || '').trim();
+  const type = (req.body || {}).type === 'personal' ? 'personal' : 'public';
   if (!name || name.length > 20) return bad(res, 40001, '角落名称需为 1~20 个字');
   const now = nowISO();
   const id = uuid();
-  db.prepare(`INSERT INTO palaces (id, owner_id, type, name, created_at, updated_at) VALUES (?, ?, 'public', ?, ?, ?)`)
-    .run(id, userId, name, now, now);
+  db.prepare(`INSERT INTO palaces (id, owner_id, type, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)`)
+    .run(id, userId, type, name, now, now);
   const p = db.prepare(`SELECT * FROM palaces WHERE id = ?`).get(id);
   res.json({ code: 0, message: 'ok', data: { palace: palaceVO(p, 'owner', 1) } });
 });
@@ -126,7 +127,13 @@ palacesRouter.delete('/:palace_id', requireAuth, (req, res) => {
   const palace = db.prepare(`SELECT * FROM palaces WHERE id = ?`).get(req.params.palace_id) as any;
   if (!palace) return bad(res, 40401, '角落不存在', 404);
   if (palace.owner_id !== userId) return bad(res, 40301, '只有创建者可以删除', 403);
-  if (palace.type === 'personal') return bad(res, 40001, '默认个人角落不能删除');
+  if (palace.type === 'personal') {
+    // 默认个人角落（最早创建的那个）不可删；后续新建的个人角落可删
+    const oldest = db
+      .prepare(`SELECT id FROM palaces WHERE owner_id = ? AND type = 'personal' ORDER BY created_at ASC LIMIT 1`)
+      .get(userId) as any;
+    if (oldest && oldest.id === palace.id) return bad(res, 40001, '默认个人角落不能删除');
+  }
   db.prepare(`DELETE FROM palaces WHERE id = ?`).run(palace.id);
   db.prepare(`DELETE FROM palace_member WHERE palace_id = ?`).run(palace.id);
   db.prepare(`DELETE FROM invite_code WHERE palace_id = ?`).run(palace.id);
