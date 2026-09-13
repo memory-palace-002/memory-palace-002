@@ -1,6 +1,6 @@
 // 基础 UI 组件：Toast、响应式外壳（NavBar/TabBar）、抽屉、小件
 import React, { createContext, useCallback, useContext, useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 
 /* ---------- Toast ---------- */
 type ToastType = 'info' | 'error';
@@ -23,25 +23,28 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
 /* ---------- 响应式外壳：移动端 TabBar / 桌面端 NavBar（§4.1） ---------- */
 export function Shell({ title, children }: { title: string; children: React.ReactNode }) {
-  const toast = useToast();
+  const navigate = useNavigate();
   return (
     <div className="page desktop-shell">
       {/* 桌面顶部导航（≥768px 显示） */}
       <div className="navbar desktop-only" style={{ borderBottom: '1px solid var(--color-border)' }}>
-        <span className="title">小角落</span>
-        <span style={{ position: 'absolute', right: 20, fontSize: 13, color: 'var(--color-text-secondary)' }}>
-          {title}
+        <span className="title" style={{ cursor: 'pointer' }} onClick={() => navigate('/palaces')}>
+          小角落
         </span>
+        <div className="nav-links">
+          <NavLink to="/palaces">角落</NavLink>
+          <NavLink to="/me">我的</NavLink>
+        </div>
       </div>
       <div className="page-body">{children}</div>
       {/* 移动端底部 Tab 栏（<768px 显示） */}
       <div className="tabbar mobile-only">
-        <button className="tab" onClick={() => toast('「首页」将在板块②开放', 'info')}>
+        <NavLink to="/palaces" className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}>
           <span className="icon">⌂</span>
           首页
-        </button>
+        </NavLink>
         <div className="tab tab-plus">
-          <button className="plus-btn" onClick={() => toast('「记录」入口将在板块③/④开放', 'info')}>+</button>
+          <button className="plus-btn" onClick={() => navigate('/palaces?create=1')}>+</button>
         </div>
         <NavLink to="/me" className={({ isActive }) => `tab ${isActive ? 'active' : ''}`}>
           <span className="icon">☺</span>

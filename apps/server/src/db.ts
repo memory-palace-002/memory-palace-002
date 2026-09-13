@@ -47,6 +47,28 @@ CREATE TABLE IF NOT EXISTS sessions (
   expires_at TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+
+-- 板块②：公共角落成员（owner 为隐式成员，存于 palaces.owner_id，此表只存被邀请加入的成员）
+CREATE TABLE IF NOT EXISTS palace_member (
+  id TEXT PRIMARY KEY,
+  palace_id TEXT NOT NULL,
+  user_id TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('owner','member')),
+  joined_at TEXT NOT NULL,
+  UNIQUE (palace_id, user_id)
+);
+
+-- 板块②：邀请码（8 位大写字母数字，去易混淆字符）
+CREATE TABLE IF NOT EXISTS invite_code (
+  id TEXT PRIMARY KEY,
+  palace_id TEXT NOT NULL,
+  code TEXT UNIQUE NOT NULL,
+  created_by TEXT NOT NULL,
+  max_uses INTEGER,
+  used_count INTEGER NOT NULL DEFAULT 0,
+  expires_at TEXT,
+  created_at TEXT NOT NULL
+);
 `);
 
 export function nowISO() {

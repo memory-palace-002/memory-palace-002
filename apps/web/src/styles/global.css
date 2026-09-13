@@ -11,8 +11,10 @@
 :root {
   --color-bg: #F7F2E7;            /* 页面背景 · 纸米白 */
   --color-bg-secondary: #E4D8C0;  /* 分层背景 · 牛皮纸 */
+  --color-bg-secondary-deep: #C6B48D; /* 分层背景加深 · 深牛皮（TabBar中央加号圆） */
   --color-surface: #FBF9F3;       /* 卡片/弹窗/输入框 · 纸亮白 */
   --color-primary: #8A9A54;       /* 主色 · 暖橄榄绿（比原草原绿更暖） */
+  --color-primary-deep: #55663C;  /* 主色加深 · 墨绿（用于二级主操作按钮） */
   --color-primary-pressed: #5C6A35;
   --color-accent: #D2603A;        /* 强调 · 暖陶红 */
   --color-info: #A9C4D4;          /* 辅助 · 雪山蓝 */
@@ -119,9 +121,10 @@ a { color: inherit; text-decoration: none; }
 }
 .tabbar .tab.active { color: var(--color-primary); }
 .tabbar .tab .icon { font-size: 20px; line-height: 24px; }
+.tabbar .tab-plus { flex: 1; display: flex; justify-content: center; }
 .tabbar .tab-plus .plus-btn {
   width: 48px; height: 48px; margin-top: -22px;
-  border-radius: 50%; background: var(--color-accent);
+  border-radius: 50%; background: var(--color-bg-secondary-deep);
   color: var(--color-surface); font-size: 26px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
   box-shadow: var(--shadow-floating);
@@ -169,6 +172,61 @@ a { color: inherit; text-decoration: none; }
 @media (min-width: 768px) {
   .desktop-shell .page-body { max-width: 1200px; margin: 0 auto; }
 }
+
+/* ===== 板块②：角落列表 / 成员 / 邀请码 ===== */
+.palace-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
+@media (min-width: 768px) {
+  .palace-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.palace-card { cursor: pointer; transition: box-shadow 0.15s, transform 0.15s; }
+.palace-card:hover { box-shadow: var(--shadow-floating); transform: translateY(-1px); }
+
+.tag {
+  display: inline-block; flex-shrink: 0;
+  font-size: 12px; line-height: 20px; padding: 0 10px;
+  border-radius: var(--radius-tag);
+}
+.tag-personal { background: var(--color-bg-secondary); color: var(--color-text-secondary); }
+.tag-public { background: var(--color-primary); color: var(--color-surface); }
+
+.badge {
+  display: inline-block; flex-shrink: 0;
+  font-size: 11px; line-height: 18px; padding: 0 8px; border-radius: var(--radius-tag);
+}
+.badge-owner { background: var(--color-accent); color: var(--color-surface); }
+.badge-member { background: var(--color-bg-secondary); color: var(--color-text-secondary); }
+
+.member-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--color-border); }
+.member-row:last-child { border-bottom: none; }
+.avatar-mini {
+  width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;
+  background: var(--color-primary); color: var(--color-surface);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700;
+}
+
+.code-display {
+  font-family: var(--font-serif); font-size: 30px; letter-spacing: 8px;
+  text-align: center; padding: 16px;
+  background: var(--color-bg-secondary); border-radius: var(--radius-input);
+  user-select: all;
+}
+
+/* 桌面顶部导航链接 */
+.nav-links { position: absolute; right: 24px; display: flex; gap: 20px; }
+.nav-links a { font-size: 14px; color: var(--color-text-secondary); }
+.nav-links a.active { color: var(--color-primary); }
+
+/* 新建角落：类型切换卡 */
+.type-toggle {
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+  padding: 12px 8px; border-radius: var(--radius-input);
+  border: 1.5px solid var(--color-border); background: var(--color-surface);
+  color: var(--color-text-primary); font-size: 15px;
+  transition: border-color 0.15s, background 0.15s;
+}
+.type-toggle small { font-size: 12px; color: var(--color-text-secondary); }
+.type-toggle.active { border-color: var(--color-primary); background: rgba(138, 154, 84, 0.08); }
 
 /* 双端显隐（§4.1）：移动元素仅手机显示，桌面元素仅电脑显示 */
 .mobile-only { display: flex; }
