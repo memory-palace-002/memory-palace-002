@@ -61,10 +61,14 @@ export default function LoginPage() {
     <div className="page" style={{ display: 'flex', flexDirection: 'column' }}>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '0 24px', maxWidth: 420, margin: '0 auto', width: '100%' }}>
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
-          <div style={{ fontSize: 44, marginBottom: 8 }}>🏛️</div>
-          <div className="page-title">回忆宫殿</div>
+          <img
+            src="/logo-corner.png"
+            alt="小角落"
+            style={{ width: 96, height: 96, objectFit: 'cover', borderRadius: 20, mixBlendMode: 'multiply', marginBottom: 8 }}
+          />
+          <div className="page-title">小角落</div>
           <div className="hand-font hint" style={{ marginTop: 8, fontSize: 15 }}>
-            把美好瞬间，轻轻放进属于你的小宫殿
+            留一个角落，装下属于我们的时间
           </div>
         </div>
 
@@ -89,7 +93,7 @@ export default function LoginPage() {
             />
             <button
               className="btn btn-secondary"
-              style={{ width: 120, flexShrink: 0, color: countdown > 0 ? 'var(--color-text-secondary)' : 'var(--color-primary)' }}
+              style={{ width: 118, flexShrink: 0, fontSize: 14, color: countdown > 0 ? 'var(--color-text-secondary)' : 'var(--color-primary)' }}
               onClick={handleSendCode}
               disabled={countdown > 0}
             >

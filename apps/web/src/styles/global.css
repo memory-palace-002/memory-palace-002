@@ -1,10 +1,19 @@
 /* 回忆宫殿 · 设计系统（依据《设计规划.md》§2.1~2.6） */
+
+/* 手写体（喜茶拙趣感风格）：站酷快乐体，自托管保证所有用户可见 */
+@font-face {
+  font-family: "ZCOOL KuaiLe";
+  src: url("/fonts/zcool-kuaile.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+
 :root {
   --color-bg: #F7F2E7;            /* 页面背景 · 纸米白 */
   --color-bg-secondary: #E4D8C0;  /* 分层背景 · 牛皮纸 */
   --color-surface: #FBF9F3;       /* 卡片/弹窗/输入框 · 纸亮白 */
-  --color-primary: #7C9A6D;       /* 主色 · 草原绿 */
-  --color-primary-pressed: #55703F;
+  --color-primary: #8A9A54;       /* 主色 · 暖橄榄绿（比原草原绿更暖） */
+  --color-primary-pressed: #5C6A35;
   --color-accent: #D2603A;        /* 强调 · 暖陶红 */
   --color-info: #A9C4D4;          /* 辅助 · 雪山蓝 */
   --color-scene-bg: #2E2A23;      /* 3D 场景衬底 · 夜幕褐 */
@@ -19,9 +28,9 @@
   --radius-btn: 24px;
   --radius-input: 12px;
   --radius-tag: 8px;
-  --font-serif: "Noto Serif SC", "Songti SC", "SimSun", serif;
-  --font-sans: "Noto Sans SC", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
-  --font-hand: "LXGW WenKai", "Kaiti SC", "STKaiti", cursive, serif;
+  --font-serif: "ZCOOL KuaiLe", "LXGW WenKai", "Kaiti SC", "STKaiti", serif;
+  --font-sans: "ZCOOL KuaiLe", "LXGW WenKai", "Kaiti SC", "STKaiti", "Noto Sans SC", sans-serif;
+  --font-hand: "ZCOOL KuaiLe", "LXGW WenKai", "Kaiti SC", "STKaiti", cursive, serif;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -45,6 +54,7 @@ a { color: inherit; text-decoration: none; }
 .btn {
   display: inline-flex; align-items: center; justify-content: center;
   border-radius: var(--radius-btn); font-size: 16px; font-weight: 500;
+  white-space: nowrap;
   transition: background 0.15s, color 0.15s, opacity 0.15s;
 }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; }

@@ -74,7 +74,7 @@ authRouter.post('/sms/login', (req, res) => {
     const id = uuid();
     const now = nowISO();
     db.prepare(`INSERT INTO users (id, phone, nickname, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`)
-      .run(id, phone, `回忆家${phone.slice(-4)}`, now, now);
+      .run(id, phone, `交交者${phone.slice(-4)}`, now, now);
     db.prepare(`INSERT INTO palaces (id, owner_id, type, name, created_at, updated_at) VALUES (?, ?, 'personal', ?, ?, ?)`)
       .run(uuid(), id, '我的回忆宫殿', now, now);
     user = db.prepare(`SELECT * FROM users WHERE id = ?`).get(id);
