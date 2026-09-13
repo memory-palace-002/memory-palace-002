@@ -1,0 +1,173 @@
+/* 回忆宫殿 · 设计系统（依据《设计规划.md》§2.1~2.6） */
+:root {
+  --color-bg: #F7F2E7;            /* 页面背景 · 纸米白 */
+  --color-bg-secondary: #E4D8C0;  /* 分层背景 · 牛皮纸 */
+  --color-surface: #FBF9F3;       /* 卡片/弹窗/输入框 · 纸亮白 */
+  --color-primary: #7C9A6D;       /* 主色 · 草原绿 */
+  --color-primary-pressed: #55703F;
+  --color-accent: #D2603A;        /* 强调 · 暖陶红 */
+  --color-info: #A9C4D4;          /* 辅助 · 雪山蓝 */
+  --color-scene-bg: #2E2A23;      /* 3D 场景衬底 · 夜幕褐 */
+  --color-text-primary: #3B3428;  /* 墨褐 */
+  --color-text-secondary: #9A8F7D;/* 雾灰褐 */
+  --color-border: #E3D9C6;        /* 暖边线 */
+  --color-overlay: rgba(46, 42, 35, 0.4);
+  --shadow-card: 0 4px 16px rgba(59, 52, 40, 0.08);
+  --shadow-floating: 0 2px 12px rgba(59, 52, 40, 0.18);
+  --radius-card: 16px;
+  --radius-sheet: 20px 20px 0 0;
+  --radius-btn: 24px;
+  --radius-input: 12px;
+  --radius-tag: 8px;
+  --font-serif: "Noto Serif SC", "Songti SC", "SimSun", serif;
+  --font-sans: "Noto Sans SC", "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+  --font-hand: "LXGW WenKai", "Kaiti SC", "STKaiti", cursive, serif;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body, #root { min-height: 100%; }
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 22px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button { font-family: inherit; cursor: pointer; border: none; background: none; }
+input { font-family: inherit; }
+a { color: inherit; text-decoration: none; }
+
+/* ===== 按钮（§2.5） ===== */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-btn); font-size: 16px; font-weight: 500;
+  transition: background 0.15s, color 0.15s, opacity 0.15s;
+}
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-primary {
+  height: 48px; padding: 0 32px; width: 100%;
+  background: var(--color-primary); color: var(--color-surface);
+}
+.btn-primary:not(:disabled):active { background: var(--color-primary-pressed); }
+.btn-secondary {
+  height: 40px; padding: 0 24px; width: 100%;
+  background: var(--color-surface); color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+}
+.btn-danger {
+  height: 40px; padding: 0 24px;
+  background: var(--color-surface); color: var(--color-accent);
+  border: 1px solid var(--color-accent); border-radius: var(--radius-btn);
+}
+
+/* ===== 卡片（§2.5，胶带装饰） ===== */
+.paper-card {
+  position: relative;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  padding: 16px;
+}
+.paper-card::before {
+  content: ""; position: absolute; top: -7px; left: 20px;
+  width: 56px; height: 14px; background: var(--color-bg-secondary);
+  opacity: 0.85; transform: rotate(-3deg); border-radius: 2px;
+}
+
+/* ===== 输入框（§2.5） ===== */
+.input {
+  height: 44px; width: 100%; padding: 0 14px;
+  background: var(--color-surface); color: var(--color-text-primary);
+  border: 1px solid var(--color-border); border-radius: var(--radius-input);
+  font-size: 15px; outline: none;
+}
+.input:focus { border-color: var(--color-primary); }
+.input::placeholder { color: var(--color-text-secondary); }
+
+/* ===== 导航栏 / Tab 栏 ===== */
+.navbar {
+  display: flex; align-items: center; justify-content: center;
+  height: 44px; background: var(--color-bg);
+  position: relative;
+}
+.navbar .title { font-family: var(--font-serif); font-size: 22px; font-weight: 500; }
+
+.tabbar {
+  display: flex; align-items: center; justify-content: space-around;
+  height: calc(56px + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--color-bg-secondary);
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+}
+.tabbar .tab {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  color: var(--color-text-secondary); font-size: 11px; flex: 1;
+}
+.tabbar .tab.active { color: var(--color-primary); }
+.tabbar .tab .icon { font-size: 20px; line-height: 24px; }
+.tabbar .tab-plus .plus-btn {
+  width: 48px; height: 48px; margin-top: -22px;
+  border-radius: 50%; background: var(--color-accent);
+  color: var(--color-surface); font-size: 26px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow-floating);
+}
+
+/* ===== 底部抽屉 / 模态（§2.5） ===== */
+.overlay {
+  position: fixed; inset: 0; background: var(--color-overlay);
+  z-index: 40; display: flex; align-items: flex-end; justify-content: center;
+}
+@media (min-width: 768px) { .overlay { align-items: center; } }
+.sheet {
+  width: 100%; max-width: 768px;
+  background: var(--color-surface); border-radius: var(--radius-sheet);
+  padding: 16px 20px calc(20px + env(safe-area-inset-bottom));
+  animation: slide-up 0.2s ease-out;
+}
+@media (min-width: 768px) {
+  .sheet { border-radius: var(--radius-card); max-width: 420px; }
+}
+.sheet .grabber { width: 32px; height: 4px; border-radius: 2px; background: var(--color-border); margin: 0 auto 12px; }
+@keyframes slide-up { from { transform: translateY(24px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+
+/* ===== Toast（顶部下拉） ===== */
+.toast {
+  position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+  background: var(--color-surface); color: var(--color-text-primary);
+  border: 1px solid var(--color-border); border-radius: var(--radius-btn);
+  padding: 10px 20px; font-size: 14px; z-index: 60;
+  box-shadow: var(--shadow-card); white-space: nowrap;
+  animation: toast-in 0.2s ease-out;
+}
+.toast.error { color: var(--color-accent); border-color: var(--color-accent); }
+@keyframes toast-in { from { transform: translate(-50%, -12px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+
+/* ===== 通用页面结构 ===== */
+.page { min-height: 100vh; }
+.page-body { padding: 16px 20px 24px; }
+.page-title { font-family: var(--font-serif); font-size: 28px; font-weight: 700; line-height: 38px; }
+.section-title { font-family: var(--font-serif); font-size: 22px; font-weight: 500; line-height: 30px; }
+.hint { font-size: 13px; line-height: 18px; color: var(--color-text-secondary); }
+.hand-font { font-family: var(--font-hand); }
+
+/* 桌面端内容居中（§4.1） */
+@media (min-width: 768px) {
+  .desktop-shell .page-body { max-width: 1200px; margin: 0 auto; }
+}
+
+/* 双端显隐（§4.1）：移动元素仅手机显示，桌面元素仅电脑显示 */
+.mobile-only { display: flex; }
+.desktop-only { display: none; }
+@media (min-width: 768px) {
+  .mobile-only { display: none; }
+  .desktop-only { display: flex; }
+}
+.tabbar.mobile-only { display: flex; }
+@media (min-width: 768px) {
+  .tabbar.mobile-only { display: none; }
+}

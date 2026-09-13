@@ -1,0 +1,21 @@
+# 后续阶段启用（板块④前后安装 Docker Desktop 后运行 `docker compose up -d`）
+# 当前开发环境使用 Node 内置 SQLite，无需本文件。
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: memory
+      POSTGRES_PASSWORD: palace
+      POSTGRES_DB: memory_palace
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+volumes:
+  pgdata:
