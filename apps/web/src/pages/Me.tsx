@@ -44,7 +44,7 @@ export default function MePage() {
         </div>
       </div>
 
-      <div className="section-title" style={{ margin: '24px 0 12px' }}>我的回忆宫殿</div>
+      <div className="section-title" style={{ margin: '24px 0 12px' }}>我的小角落</div>
       <div
         className="paper-card"
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}

@@ -28,7 +28,7 @@ export function Shell({ title, children }: { title: string; children: React.Reac
     <div className="page desktop-shell">
       {/* 桌面顶部导航（≥768px 显示） */}
       <div className="navbar desktop-only" style={{ borderBottom: '1px solid var(--color-border)' }}>
-        <span className="title">回忆宫殿</span>
+        <span className="title">小角落</span>
         <span style={{ position: 'absolute', right: 20, fontSize: 13, color: 'var(--color-text-secondary)' }}>
           {title}
         </span>
