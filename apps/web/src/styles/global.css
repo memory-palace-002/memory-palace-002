@@ -13,6 +13,7 @@
   --color-bg-secondary: #E4D8C0;  /* 分层背景 · 牛皮纸 */
   --color-surface: #FBF9F3;       /* 卡片/弹窗/输入框 · 纸亮白 */
   --color-primary: #8A9A54;       /* 主色 · 暖橄榄绿（比原草原绿更暖） */
+  --color-primary-deep: #55663C;  /* 主色加深 · 墨绿（用于二级主操作按钮） */
   --color-primary-pressed: #5C6A35;
   --color-accent: #D2603A;        /* 强调 · 暖陶红 */
   --color-info: #A9C4D4;          /* 辅助 · 雪山蓝 */

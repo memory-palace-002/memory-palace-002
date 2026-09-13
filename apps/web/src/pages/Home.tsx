@@ -104,7 +104,7 @@ export default function HomePage() {
         </button>
         <button
           className="btn btn-primary"
-          style={{ height: 44, flex: '1 1 160px', background: 'var(--color-accent)' }}
+          style={{ height: 44, flex: '1 1 160px', background: 'var(--color-primary-deep)' }}
           onClick={() => { setCreateType('public'); setCreateOpen(true); }}
         >
           ＋ 新建公共角落
