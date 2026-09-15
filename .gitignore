@@ -4,3 +4,9 @@ data/
 *.db
 .env
 .DS_Store
+*.local
+# 凭据：任何情况下都不进仓库
+.env.*
+!.env.example
+# 仅前端允许公开的样板
+apps/web/.env.example

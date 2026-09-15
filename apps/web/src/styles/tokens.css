@@ -1,0 +1,92 @@
+/**
+ * 设计系统 —— 色板 / 字体 / 圆角 / 间距
+ * 沿用《设计规划.md》2.1~2.6，桌面端与移动端共用同一套 CSS 变量（§4.1）
+ */
+:root {
+  /* ---- 色板 ---- */
+  --c-paper: #fdfbf7; /* 纸亮白 */
+  --c-paper-dim: #f6efe3; /* 纸本底色（页面背景） */
+  --c-kraft: #e5d6bc; /* 牛皮纸 */
+  --c-kraft-deep: #d6c3a1; /* 牛皮纸深（描边/分隔） */
+  --c-night: #2c2723; /* 夜幕褐（3D 场景底色 / 深色文字） */
+  --c-ink: #3a342e; /* 正文墨色 */
+  --c-ink-soft: #6b635a; /* 次级文字 */
+  --c-ink-faint: #9a9188; /* 三级文字 / placeholder */
+  --c-terracotta: #c1583c; /* 暖陶红（主色） */
+  --c-terracotta-deep: #a7472e; /* 按压态 */
+  --c-terracotta-soft: #f3dfd8; /* 浅底 */
+  --c-sage: #7d8b6a; /* 辅助色：状态 ok */
+  --c-gold: #c99a4a; /* 辅助色：徽标 */
+
+  /* ---- 语义色 ---- */
+  --bg: var(--c-paper-dim);
+  --surface: var(--c-paper);
+  --text: var(--c-ink);
+  --text-soft: var(--c-ink-soft);
+  --text-faint: var(--c-ink-faint);
+  --primary: var(--c-terracotta);
+  --primary-active: var(--c-terracotta-deep);
+  --danger: #b23b30;
+  --border: var(--c-kraft-deep);
+  --border-soft: #ebe2d3;
+
+  /* ---- 字体 ---- */
+  --font-serif: 'Songti SC', 'STSong', 'SimSun', 'Noto Serif SC', serif;
+  --font-hand: 'LXGW WenKai', 'LXGW WenKai Screen', 'Kaiti SC', 'STKaiti', 'KaiTi', serif;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+
+  /* ---- 字号（移动基准，桌面在 media query 中放大） ---- */
+  --fs-hero: 28px; /* 首页大标题（宋体） */
+  --fs-title: 20px;
+  --fs-sub: 17px;
+  --fs-body: 15px;
+  --fs-note: 13px;
+  --fs-tiny: 12px;
+
+  /* ---- 圆角 ---- */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --r-full: 999px;
+
+  /* ---- 阴影 / 纸感 ---- */
+  --shadow-sm: 0 1px 2px rgba(44, 39, 35, 0.06);
+  --shadow-md: 0 4px 16px rgba(44, 39, 35, 0.1);
+  --shadow-lg: 0 12px 40px rgba(44, 39, 35, 0.16);
+
+  /* ---- 尺寸 ---- */
+  --tap: 44px; /* 最小点击目标 */
+  --shell-max: 1200px; /* 桌面内容区最大宽 */
+  --z-nav: 100;
+  --z-dock: 200;
+  --z-sheet: 300;
+  --z-toast: 400;
+
+  /* ---- 动效 ---- */
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* 桌面端（≥768px）：等比沿用同一套变量，仅放大字号与间距（§4.1） */
+@media (min-width: 768px) {
+  :root {
+    --fs-hero: 40px;
+    --fs-title: 22px;
+    --fs-sub: 18px;
+    --fs-body: 16px;
+    --fs-note: 14px;
+    --fs-tiny: 13px;
+  }
+}
+
+/* 尊重系统减少动效设置 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

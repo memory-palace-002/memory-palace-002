@@ -1,0 +1,426 @@
+/* ==================== §4.4 跨页面公共组件样式 ==================== */
+
+/* ------------------------------ Button ------------------------------ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 0 20px;
+  border: 1px solid transparent;
+  border-radius: var(--r-md);
+  font-size: var(--fs-body);
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.12s var(--ease), background-color 0.18s var(--ease),
+    border-color 0.18s var(--ease), opacity 0.18s var(--ease);
+  user-select: none;
+  white-space: nowrap;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn--block {
+  width: 100%;
+}
+
+.btn--primary {
+  background: var(--primary);
+  color: #fff;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: var(--primary-active);
+}
+
+.btn--secondary {
+  background: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.btn--secondary:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.btn--ghost {
+  background: transparent;
+  color: var(--text-soft);
+}
+
+.btn--ghost:hover:not(:disabled) {
+  color: var(--primary);
+}
+
+.btn--danger {
+  background: transparent;
+  color: var(--danger);
+  border-color: rgba(178, 59, 48, 0.35);
+}
+
+.btn--danger:hover:not(:disabled) {
+  background: rgba(178, 59, 48, 0.08);
+  border-color: var(--danger);
+}
+
+.btn--danger-solid {
+  background: var(--danger);
+  color: #fff;
+}
+
+.btn--sm {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: var(--fs-note);
+  border-radius: var(--r-sm);
+}
+
+/* ------------------------------ PaperCard --------------------------- */
+.paper {
+  position: relative;
+  background: var(--surface);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  border: 1px solid var(--border-soft);
+  overflow: hidden;
+  transition: transform 0.16s var(--ease), box-shadow 0.16s var(--ease);
+}
+
+.paper--interactive {
+  cursor: pointer;
+}
+
+.paper--interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.paper:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* 胶带装饰条 */
+.tape {
+  position: absolute;
+  top: -6px;
+  left: 22px;
+  width: 76px;
+  height: 22px;
+  background: rgba(229, 214, 188, 0.85);
+  border-left: 1px dashed rgba(44, 39, 35, 0.12);
+  border-right: 1px dashed rgba(44, 39, 35, 0.12);
+  transform: rotate(-3deg);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.tape--clay {
+  background: rgba(193, 88, 60, 0.28);
+}
+
+.tape--right {
+  left: auto;
+  right: 22px;
+  transform: rotate(4deg);
+}
+
+/* ------------------------------ Input ------------------------------- */
+.field {
+  display: block;
+}
+
+.field__label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: var(--fs-note);
+  color: var(--text-soft);
+}
+
+.input,
+.textarea {
+  width: 100%;
+  min-height: var(--tap);
+  padding: 10px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  font-size: var(--fs-body);
+  color: var(--text);
+  transition: border-color 0.16s var(--ease), box-shadow 0.16s var(--ease);
+}
+
+.textarea {
+  min-height: 120px;
+  line-height: 1.75;
+  resize: vertical;
+}
+
+.input:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(193, 88, 60, 0.12);
+}
+
+.input--center {
+  text-align: center;
+  letter-spacing: 4px;
+  font-size: 20px;
+}
+
+.field__hint {
+  margin-top: 6px;
+  font-size: var(--fs-tiny);
+  color: var(--text-faint);
+}
+
+.field__hint--error {
+  color: var(--danger);
+}
+
+/* ------------------------------ Badge ------------------------------- */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: var(--r-full);
+  font-size: var(--fs-tiny);
+  line-height: 1.7;
+  background: var(--c-kraft);
+  color: #6a5a42;
+  white-space: nowrap;
+}
+
+.badge--clay {
+  background: var(--c-terracotta-soft);
+  color: var(--c-terracotta-deep);
+}
+
+.badge--sage {
+  background: rgba(125, 139, 106, 0.16);
+  color: #55603f;
+}
+
+.badge--gold {
+  background: rgba(201, 154, 74, 0.18);
+  color: #8a6620;
+}
+
+.badge--ghost {
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  color: var(--text-soft);
+}
+
+/* ------------------------------ Avatar ------------------------------ */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  border-radius: var(--r-full);
+  background: var(--c-kraft);
+  color: #6a5a42;
+  font-family: var(--font-hand);
+  font-size: 16px;
+  overflow: hidden;
+  user-select: none;
+}
+
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ------------------------------ Tabs -------------------------------- */
+.tabs {
+  display: flex;
+  gap: 6px;
+  padding: 4px;
+  background: rgba(229, 214, 188, 0.4);
+  border-radius: var(--r-full);
+}
+
+.tabs--full {
+  width: 100%;
+}
+
+.tabs__item {
+  flex: 1;
+  min-height: 38px;
+  padding: 0 16px;
+  border: none;
+  background: transparent;
+  border-radius: var(--r-full);
+  color: var(--text-soft);
+  font-size: var(--fs-note);
+  cursor: pointer;
+  transition: background 0.18s var(--ease), color 0.18s var(--ease);
+  white-space: nowrap;
+}
+
+.tabs__item[aria-selected='true'] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+  font-weight: 500;
+}
+
+/* ---------------------------- EmptyState ---------------------------- */
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 48px 28px;
+  text-align: center;
+  background: linear-gradient(180deg, rgba(229, 214, 188, 0.45), rgba(229, 214, 188, 0.2));
+  border: 1px dashed var(--border);
+  border-radius: var(--r-lg);
+}
+
+.empty__title {
+  font-family: var(--font-hand);
+  font-size: 19px;
+  color: #6a5a42;
+}
+
+.empty__desc {
+  font-size: var(--fs-note);
+  color: var(--text-soft);
+  max-width: 420px;
+}
+
+/* --------------------------- SectionTitle --------------------------- */
+.section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 22px 0 12px;
+  font-family: var(--font-serif);
+  font-size: var(--fs-title);
+  color: var(--text);
+}
+
+/* ------------------------------ Divider ----------------------------- */
+.divider {
+  height: 1px;
+  background: var(--border-soft);
+  margin: 16px 0;
+}
+
+/* ----------------------------- RowItem ------------------------------ */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.row__main {
+  flex: 1;
+  min-width: 0;
+}
+
+/* --------------------------- PageHeader ----------------------------- */
+.page-header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-nav);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: rgba(246, 239, 227, 0.92);
+  backdrop-filter: saturate(1.4) blur(8px);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.page-header__title {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  font-family: var(--font-serif);
+  font-size: var(--fs-sub);
+}
+
+.page-header__slot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 44px;
+}
+
+.page-header__slot--right {
+  justify-content: flex-end;
+}
+
+@media (min-width: 768px) {
+  .page-header {
+    padding: 12px 32px;
+  }
+}
+
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: background 0.16s var(--ease), color 0.16s var(--ease);
+}
+
+.icon-btn:hover {
+  background: rgba(44, 39, 35, 0.06);
+  color: var(--text);
+}
+
+.icon-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ----------------------------- Spinner ------------------------------ */
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(44, 39, 35, 0.15);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.page-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 64px 0;
+  color: var(--text-faint);
+  font-size: var(--fs-note);
+}

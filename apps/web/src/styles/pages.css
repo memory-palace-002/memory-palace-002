@@ -1,0 +1,445 @@
+/* ==================== 页面级样式 ==================== */
+
+/* ------------------------------ P2 首页 ------------------------------ */
+.home__header {
+  padding: 8px 0 4px;
+}
+
+.home__title {
+  font-size: var(--fs-hero);
+  line-height: 1.35;
+  color: var(--text);
+}
+
+.home__sub {
+  margin-top: 6px;
+  font-size: var(--fs-note);
+}
+
+.home__content {
+  padding-top: 18px;
+}
+
+.home__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 24px 0 8px;
+}
+
+.palace-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .palace-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+  }
+}
+
+@media (min-width: 1080px) {
+  .palace-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.palace-card {
+  padding-top: 0;
+}
+
+.palace-card__cover {
+  position: relative;
+  height: 132px;
+  background: linear-gradient(160deg, rgba(229, 214, 188, 0.75), rgba(229, 214, 188, 0.35));
+  overflow: hidden;
+}
+
+.palace-card__cover.is-public {
+  background: linear-gradient(160deg, rgba(193, 88, 60, 0.16), rgba(229, 214, 188, 0.45));
+}
+
+.palace-card__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.palace-card__pattern {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 8px;
+  padding: 14px;
+}
+
+.palace-card__pattern span {
+  border-radius: 6px;
+  background: rgba(253, 251, 247, 0.55);
+  border: 1px solid rgba(44, 39, 35, 0.05);
+}
+
+.palace-card__pattern span:nth-child(2) {
+  background: rgba(253, 251, 247, 0.35);
+}
+
+.palace-card__pattern span:nth-child(5) {
+  background: rgba(193, 88, 60, 0.12);
+}
+
+.palace-card__body {
+  padding: 14px 16px 16px;
+}
+
+.palace-card__title {
+  font-size: var(--fs-sub);
+}
+
+.palace-card__meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  font-size: var(--fs-note);
+  color: var(--text-soft);
+}
+
+.palace-card__meta svg {
+  vertical-align: -2px;
+}
+
+.palace-card__foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.palace-card__members {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: none;
+  border-radius: var(--r-full);
+  background: transparent;
+  color: var(--text-soft);
+  font-size: var(--fs-tiny);
+  cursor: pointer;
+}
+
+.palace-card__members:hover {
+  color: var(--primary);
+  background: rgba(193, 88, 60, 0.08);
+}
+
+.palace-card__time {
+  margin-left: auto;
+  font-size: var(--fs-tiny);
+}
+
+/* -------------------------- P3 展示柜选择页 -------------------------- */
+.cabinet-list {
+  padding-top: 16px;
+  padding-bottom: 24px;
+}
+
+.cabinet-list__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 320px;
+  margin-top: 8px;
+}
+
+.cabinet-list__actions--bottom {
+  margin-top: 22px;
+  max-width: none;
+}
+
+.cabinet-list__actions .btn {
+  justify-content: center;
+}
+
+@media (min-width: 768px) {
+  .cabinet-list__actions {
+    flex-direction: row;
+    max-width: none;
+  }
+}
+
+.cabinet-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(2, 1fr);
+  margin-top: 18px;
+}
+
+@media (min-width: 768px) {
+  .cabinet-grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+}
+
+@media (min-width: 1080px) {
+  .cabinet-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+.cabinet-card__cover {
+  position: relative;
+  height: 116px;
+  background: linear-gradient(180deg, rgba(229, 214, 188, 0.6), rgba(229, 214, 188, 0.25));
+}
+
+.cabinet-card__cover.is-dim {
+  opacity: 0.62;
+}
+
+.cabinet-card__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cabinet-card__grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  gap: 6px;
+  padding: 14px;
+}
+
+.cabinet-card__grid span {
+  border-radius: 4px;
+  background: rgba(253, 251, 247, 0.5);
+}
+
+.cabinet-card__count {
+  position: absolute;
+  right: 10px;
+  bottom: 8px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+  padding: 2px 9px;
+  border-radius: var(--r-full);
+  background: rgba(253, 251, 247, 0.9);
+  color: var(--text);
+  font-size: 14px;
+}
+
+.cabinet-card__count em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+.cabinet-card__body {
+  padding: 12px 14px 14px;
+}
+
+.cabinet-card__title {
+  font-size: var(--fs-body);
+}
+
+.cabinet-card__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cabinet-card__full {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: var(--fs-tiny);
+  color: var(--c-gold);
+}
+
+.scan-guide {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0 4px;
+}
+
+.scan-guide__qr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 132px;
+  border-radius: var(--r-lg);
+  background: var(--c-paper-dim);
+  border: 1px dashed var(--border);
+  color: var(--text-soft);
+}
+
+/* --------------------------- P9 公共宫殿页 --------------------------- */
+.members-page {
+  padding-top: 16px;
+  padding-bottom: 28px;
+}
+
+.palace-info {
+  padding: 18px 18px 16px;
+}
+
+.palace-info__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.palace-info__name {
+  font-size: var(--fs-title);
+}
+
+.palace-info__meta {
+  margin-top: 4px;
+  font-size: var(--fs-note);
+}
+
+.palace-info__created {
+  margin-top: 10px;
+  font-size: var(--fs-tiny);
+}
+
+.member-list {
+  padding: 4px 0;
+}
+
+.member-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.member-item__name {
+  font-size: var(--fs-body);
+}
+
+.member-item__meta {
+  font-size: var(--fs-tiny);
+}
+
+.member-item__line {
+  position: absolute;
+  left: 66px;
+  right: 16px;
+  bottom: 0;
+  height: 1px;
+  background: var(--border-soft);
+}
+
+.members-page__join {
+  margin-top: 10px;
+}
+
+.rule-note {
+  margin-top: 24px;
+  padding: 16px 18px;
+  border-radius: var(--r-lg);
+  background: rgba(229, 214, 188, 0.35);
+  border: 1px dashed var(--border);
+}
+
+.rule-note__title {
+  font-size: 17px;
+  color: #6a5a42;
+  margin-bottom: 6px;
+}
+
+.rule-note__list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: var(--fs-note);
+  color: var(--text-soft);
+}
+
+.rule-note__list li::before {
+  content: '· ';
+}
+
+.invite-code {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 0;
+}
+
+.invite-code__box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: var(--r-md);
+  background: var(--c-paper-dim);
+  border: 1px dashed var(--border);
+}
+
+.invite-code__value {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  letter-spacing: 6px;
+}
+
+.invite-code__copy {
+  border: none;
+  background: transparent;
+  color: var(--primary);
+  cursor: pointer;
+  padding: 4px;
+}
+
+.invite-code__text {
+  font-family: var(--font-hand);
+  font-size: var(--fs-body);
+  line-height: 1.8;
+  text-align: center;
+  color: var(--text-soft);
+}
+
+/* -------------------------- 其它板块占位页 -------------------------- */
+.stub {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46vh;
+  padding: 32px 20px;
+  text-align: center;
+}
+
+.stub__badge {
+  font-size: var(--fs-tiny);
+  color: var(--text-faint);
+}
+
+.stub__title {
+  font-family: var(--font-serif);
+  font-size: var(--fs-title);
+}
+
+.stub__desc {
+  max-width: 460px;
+  font-size: var(--fs-note);
+  color: var(--text-soft);
+}
