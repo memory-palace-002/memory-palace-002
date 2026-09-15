@@ -1,0 +1,131 @@
+/* ------------------------------ NavBar ------------------------------ */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-nav);
+  background: rgba(246, 239, 227, 0.92);
+  backdrop-filter: saturate(1.4) blur(8px);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.navbar__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  height: 64px;
+}
+
+.navbar__brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.navbar__links {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.navbar__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 40px;
+  padding: 0 12px;
+  border: none;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-soft);
+  font-size: var(--fs-note);
+  cursor: pointer;
+}
+
+.navbar__link:hover {
+  background: rgba(44, 39, 35, 0.06);
+  color: var(--text);
+}
+
+.navbar__avatar {
+  margin-left: 4px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+/* ------------------------------ TabBar ------------------------------ */
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: var(--z-nav);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  height: calc(60px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: rgba(253, 251, 247, 0.96);
+  backdrop-filter: saturate(1.4) blur(8px);
+  border-top: 1px solid var(--border-soft);
+}
+
+.tabbar__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  flex: 1;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  color: var(--text-faint);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.tabbar__item.is-active {
+  color: var(--primary);
+}
+
+.tabbar__fab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54px;
+  height: 54px;
+  margin-top: -22px;
+  border: none;
+  border-radius: var(--r-full);
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(193, 88, 60, 0.35);
+  cursor: pointer;
+  transition: transform 0.14s var(--ease);
+}
+
+.tabbar__fab:active {
+  transform: scale(0.94);
+}
+
+/* ----------------------------- AppShell ----------------------------- */
+.app-shell {
+  min-height: 100%;
+}
+
+.app-main {
+  padding-top: 16px;
+}
+
+@media (min-width: 768px) {
+  .app-main {
+    padding-top: 24px;
+  }
+}

@@ -1,0 +1,322 @@
+/* ==================== P7 AI 聆听者页 ==================== */
+
+.listen-page__inner {
+  padding-top: 14px;
+  padding-bottom: 32px;
+}
+
+.listen-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+}
+
+.listen-item__thumb {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--r-md);
+  background: linear-gradient(160deg, rgba(229, 214, 188, 0.8), rgba(229, 214, 188, 0.4));
+  overflow: hidden;
+  font-size: 22px;
+  color: #6a5a42;
+  flex: none;
+}
+
+.listen-item__thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.listen-item__name {
+  font-size: var(--fs-sub);
+}
+
+.listen-item__meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-tiny);
+}
+
+.listen-panel {
+  margin-top: 20px;
+}
+
+.listen-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 0 6px;
+}
+
+.listen-hint {
+  text-align: center;
+}
+
+.listen-hint__title {
+  font-size: 19px;
+  color: #6a5a42;
+}
+
+.listen-hint__sub {
+  margin-top: 4px;
+  font-size: var(--fs-note);
+}
+
+/* -------------------- VoiceRecordButton -------------------- */
+.record-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 108px;
+  height: 108px;
+  border: none;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  cursor: pointer;
+  transition: transform 0.16s var(--ease), background 0.22s var(--ease);
+}
+
+.record-btn:active {
+  transform: scale(0.96);
+}
+
+.record-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.record-btn__icon {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 呼吸动画（无发光）：只用位移与透明度做一圈涟漪 */
+.record-btn__pulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(193, 88, 60, 0.18);
+  opacity: 0;
+}
+
+.record-btn--active .record-btn__pulse {
+  animation: breathe 2.4s ease-in-out infinite;
+}
+
+.record-btn--active {
+  background: var(--primary-active);
+}
+
+@keyframes breathe {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  70% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.55);
+    opacity: 0;
+  }
+}
+
+.record-btn--generating {
+  background: transparent;
+  border: 2px solid var(--border);
+  cursor: default;
+}
+
+.record-btn--generating .spinner {
+  width: 26px;
+  height: 26px;
+  border-width: 3px;
+}
+
+/* ----------------------- LiveTranscript -------------------- */
+.live-transcript {
+  display: flex;
+  gap: 8px;
+  max-width: 560px;
+  margin: 14px auto 0;
+  padding: 14px 16px;
+  border-radius: var(--r-lg);
+  background: rgba(229, 214, 188, 0.35);
+}
+
+.live-transcript__caret {
+  flex: none;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--primary);
+  animation: caret 1.1s steps(2, start) infinite;
+}
+
+.live-transcript__text {
+  font-family: var(--font-hand);
+  font-size: var(--fs-body);
+  line-height: 1.8;
+  color: #5d5346;
+}
+
+@keyframes caret {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.15;
+  }
+}
+
+/* ---------------------- BlurbResultCard -------------------- */
+.blurb-card {
+  padding: 18px 20px 16px;
+  border-radius: var(--r-lg);
+  background: var(--surface);
+  border: 1px solid var(--border-soft);
+  box-shadow: var(--shadow-sm);
+}
+
+.blurb-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.blurb-card__len {
+  font-size: var(--fs-tiny);
+}
+
+.blurb-card__body {
+  font-size: 17px;
+  line-height: 1.95;
+  color: #4a4238;
+}
+
+@media (min-width: 768px) {
+  .blurb-card__body {
+    font-size: 18px;
+  }
+}
+
+.blurb-card__foot {
+  margin-top: 12px;
+  font-size: var(--fs-tiny);
+}
+
+/* ------------------------- Actions ------------------------- */
+.listen-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.listen-fallback {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: var(--r-lg);
+  border: 1px dashed var(--border);
+  background: rgba(229, 214, 188, 0.3);
+}
+
+.listen-note {
+  margin-top: 18px;
+  font-size: var(--fs-tiny);
+  text-align: center;
+  line-height: 1.7;
+}
+
+.edit-counter {
+  margin-top: 8px;
+  text-align: right;
+  font-size: var(--fs-tiny);
+  color: var(--text-faint);
+}
+
+.edit-counter.is-error {
+  color: var(--danger);
+}
+
+/* --------------------- TranscriptEditor（校订态） -------------------- */
+.listen-review {
+  margin-top: 12px;
+}
+
+.transcript-editor {
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 16px;
+  border-radius: var(--r-lg);
+  background: rgba(229, 214, 188, 0.32);
+  border: 1px solid var(--border-soft);
+}
+
+.transcript-editor__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.transcript-editor__title {
+  font-size: 17px;
+  color: #6a5a42;
+}
+
+.transcript-editor__hint {
+  font-size: var(--fs-tiny);
+}
+
+.transcript-editor__area {
+  width: 100%;
+  min-height: 116px;
+  resize: vertical;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-family: var(--font-hand);
+  font-size: var(--fs-body);
+  line-height: 1.9;
+  color: #4a4238;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.transcript-editor__area:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(193, 88, 60, 0.12);
+}
+
+.listen-review__actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 14px;
+}
