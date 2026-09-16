@@ -8,3 +8,9 @@ build/
 coverage/
 .vscode/
 .idea/
+
+# 独立打包产物（可由 vite.standalone.config.ts 重新生成）
+dist-standalone/
+# 临时日志	sc-exit.txt	sc-code.txt	sc-out.txt
+vite-code.txt
+vite-out.txt

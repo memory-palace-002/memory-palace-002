@@ -1,0 +1,584 @@
+/* ===== MemoryRoom3D —— 3D 回忆房间 UI 层（上传按钮 / 三选一弹窗 / 手动截取 / 抠图进度 / 回忆卡片 / 天气特效） ===== */
+
+.mr3d-root {
+  position: relative;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  user-select: none;
+}
+
+/* ---------- 上传按钮 ---------- */
+.mr3d-upload {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  z-index: 10;
+  padding: 12px 20px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff9ec;
+  background: linear-gradient(160deg, #e4b96a, #cf9a4e);
+  box-shadow: 0 6px 16px rgba(150, 105, 45, 0.35);
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.mr3d-upload:hover {
+  transform: translateY(-3px) scale(1.03);
+}
+
+/* ---------- 抠图进度 ---------- */
+.mr3d-progress-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(50, 36, 20, 0.35);
+  backdrop-filter: blur(3px);
+}
+.mr3d-progress-panel {
+  width: min(320px, 84vw);
+  padding: 22px 24px;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #fdf9f0, #f6eddb);
+  box-shadow: 0 18px 40px rgba(50, 32, 16, 0.35);
+  color: #5d4b32;
+}
+.mr3d-progress-panel h3 {
+  margin: 0 0 14px;
+  font-size: 16px;
+}
+.mr3d-progress-panel p {
+  margin: 10px 0 0;
+  font-size: 12px;
+  opacity: 0.8;
+}
+.choice-progress {
+  height: 8px;
+  border-radius: 99px;
+  background: rgba(120, 95, 60, 0.16);
+  overflow: hidden;
+}
+.choice-progress i {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #e4b96a, #cf9a4e);
+  transition: width 0.25s ease;
+}
+.mr3d-err {
+  color: #b4562f;
+}
+.mr3d-err-float {
+  position: absolute;
+  left: 50%;
+  bottom: 84px;
+  transform: translateX(-50%);
+  z-index: 15;
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 10px;
+  font-size: 12px;
+  background: rgba(253, 249, 240, 0.95);
+  box-shadow: 0 6px 16px rgba(50, 32, 16, 0.2);
+}
+
+/* ---------- 三选一弹窗 ---------- */
+.mr3d-choice-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(50, 36, 20, 0.4);
+  backdrop-filter: blur(3px);
+  animation: mr3d-fade 0.25s ease;
+}
+.mr3d-choice {
+  position: relative;
+  width: min(340px, 88vw);
+  padding: 20px 22px 18px;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #fdf9f0, #f6eddb);
+  box-shadow: 0 18px 40px rgba(50, 32, 16, 0.35);
+  color: #5d4b32;
+  animation: card-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.mr3d-choice h3 {
+  margin: 0 0 12px;
+  font-size: 16px;
+  text-align: center;
+}
+.choice-preview {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+  border: 3px solid #fffdf7;
+  border-radius: 4px;
+  box-shadow: 0 2px 6px rgba(60, 40, 20, 0.15);
+  transform: rotate(0.4deg);
+}
+.choice-preview img {
+  display: block;
+  max-width: 100%;
+  max-height: 140px;
+  object-fit: contain;
+}
+.choice-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.choice-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid rgba(140, 110, 70, 0.28);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: rgba(255, 253, 247, 0.85);
+  transition:
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1),
+    border-color 0.2s,
+    background 0.2s;
+}
+.choice-item:hover {
+  transform: translateX(3px);
+  border-color: #c99e58;
+  background: #fffdf7;
+}
+.choice-icon {
+  font-size: 20px;
+}
+.choice-text b {
+  display: block;
+  font-size: 14px;
+  color: #4c3d28;
+}
+.choice-text p {
+  margin: 2px 0 0;
+  font-size: 11.5px;
+  opacity: 0.75;
+}
+
+/* ---------- 手动截取编辑器 ---------- */
+.crop-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(50, 36, 20, 0.4);
+  backdrop-filter: blur(3px);
+  animation: mr3d-fade 0.25s ease;
+}
+.crop-panel {
+  position: relative;
+  width: min(560px, 92vw);
+  padding: 18px 20px 16px;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #fdf9f0, #f6eddb);
+  box-shadow: 0 18px 40px rgba(50, 32, 16, 0.35);
+  color: #5d4b32;
+  animation: card-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.crop-panel h3 {
+  margin: 0 0 10px;
+  font-size: 15px;
+  text-align: center;
+}
+.crop-stage {
+  display: flex;
+  justify-content: center;
+}
+.crop-stage canvas {
+  max-width: 100%;
+  border-radius: 8px;
+  cursor: crosshair;
+  touch-action: none;
+  box-shadow: 0 2px 8px rgba(60, 40, 20, 0.2);
+  background: #fff;
+}
+.crop-err {
+  margin: 8px 0 0;
+  font-size: 12px;
+  text-align: center;
+}
+.crop-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.crop-hint {
+  flex: 1;
+  margin: 0;
+  font-size: 11.5px;
+  opacity: 0.7;
+  text-align: center;
+}
+.crop-back,
+.crop-redo,
+.crop-ok {
+  padding: 7px 14px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.crop-back,
+.crop-redo {
+  color: #8a6f4a;
+  background: rgba(120, 95, 60, 0.1);
+}
+.crop-back:hover,
+.crop-redo:hover {
+  background: rgba(120, 95, 60, 0.18);
+}
+.crop-ok {
+  color: #fff9ec;
+  background: linear-gradient(160deg, #e4b96a, #cf9a4e);
+  box-shadow: 0 4px 10px rgba(150, 105, 45, 0.3);
+}
+.crop-ok:hover {
+  filter: brightness(1.05);
+}
+.crop-ok:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+  filter: none;
+}
+
+/* ---------- 操作提示 ---------- */
+.mr3d-hint {
+  position: absolute;
+  left: 20px;
+  bottom: 24px;
+  z-index: 10;
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 11.5px;
+  color: #7a6446;
+  background: rgba(253, 249, 240, 0.9);
+  box-shadow: 0 4px 12px rgba(50, 32, 16, 0.14);
+  pointer-events: none;
+}
+
+/* ---------- 回忆卡片 ---------- */
+.mr3d-card-mask {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(50, 36, 20, 0.4);
+  backdrop-filter: blur(3px);
+  animation: mr3d-fade 0.25s ease;
+}
+@keyframes mr3d-fade {
+  from {
+    opacity: 0;
+  }
+}
+.memory-card {
+  position: relative;
+  width: min(360px, 86vw);
+  max-height: 86vh;
+  overflow: auto;
+  background:
+    repeating-linear-gradient(0deg, rgba(120, 90, 60, 0.03) 0 1px, transparent 1px 4px),
+    linear-gradient(160deg, #fdf9f0, #f6eddb);
+  border-radius: 4px;
+  padding: 18px 20px 16px;
+  box-shadow:
+    0 2px 4px rgba(50, 32, 16, 0.2),
+    0 18px 40px rgba(50, 32, 16, 0.35);
+  transform: rotate(-0.8deg);
+  animation: card-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  color: #5d4b32;
+}
+@keyframes card-in {
+  from {
+    transform: rotate(-0.8deg) translateY(24px) scale(0.92);
+    opacity: 0;
+  }
+}
+.card-tape {
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  width: 92px;
+  height: 22px;
+  transform: translateX(-50%) rotate(-2deg);
+  background: rgba(228, 208, 160, 0.6);
+  border-left: 1px dashed rgba(120, 95, 60, 0.25);
+  border-right: 1px dashed rgba(120, 95, 60, 0.25);
+}
+.card-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 5;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  color: #7a6446;
+  background: rgba(120, 95, 60, 0.1);
+}
+.card-close:hover {
+  background: rgba(120, 95, 60, 0.22);
+}
+
+/* 照片区：虚化背景 + 天气特效 + 本体 */
+.card-photo {
+  position: relative;
+  overflow: hidden;
+  margin: 6px 0 12px;
+  border: 4px solid #fffdf7;
+  box-shadow: 0 2px 6px rgba(60, 40, 20, 0.18);
+  transform: rotate(0.6deg);
+  background: #f1ece0;
+  --fall: 320px;
+}
+.card-photo img {
+  display: block;
+  width: 100%;
+  max-height: 180px;
+  object-fit: contain;
+  background: #fff;
+}
+.card-photo .card-photo-blur {
+  position: absolute;
+  inset: -12%;
+  width: 124%;
+  height: 124%;
+  max-height: none;
+  object-fit: cover;
+  z-index: 0;
+  filter: blur(14px) saturate(1.15) brightness(1.06);
+  opacity: 0.85;
+  transform: scale(1.12);
+}
+.card-photo .card-photo-main {
+  position: relative;
+  z-index: 5;
+}
+.checker {
+  background-image:
+    linear-gradient(45deg, #e8e2d4 25%, transparent 25% 75%, #e8e2d4 75%),
+    linear-gradient(45deg, #e8e2d4 25%, transparent 25% 75%, #e8e2d4 75%);
+  background-size: 16px 16px;
+  background-position:
+    0 0,
+    8px 8px;
+  background-color: #f6f2e8;
+}
+
+/* 表单 */
+.card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.card-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+.card-row > span {
+  flex: 0 0 40px;
+  font-family: 'Kaiti SC', 'STKaiti', 'KaiTi', cursive;
+  font-weight: 700;
+}
+.card-row input,
+.card-row textarea {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid rgba(140, 110, 70, 0.28);
+  border-radius: 8px;
+  font: inherit;
+  color: #4c3d28;
+  background: rgba(255, 253, 247, 0.85);
+  resize: none;
+}
+.card-row input:focus,
+.card-row textarea:focus {
+  outline: none;
+  border-color: #c99e58;
+  box-shadow: 0 0 0 3px rgba(201, 158, 88, 0.16);
+}
+.weather-pick {
+  display: flex;
+  gap: 6px;
+}
+.weather-pick button {
+  width: 32px;
+  height: 30px;
+  border: 1px solid rgba(140, 110, 70, 0.3);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+  background: rgba(255, 253, 247, 0.85);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.weather-pick button:hover {
+  transform: scale(1.12);
+}
+.weather-pick button.on {
+  background: #f0dfb8;
+  border-color: #b98f4e;
+  transform: scale(1.1);
+}
+.summary-area {
+  font-family: 'Kaiti SC', 'STKaiti', 'KaiTi', 'Ma Shan Zheng', cursive;
+}
+
+/* SDK 槽位 */
+.sdk-slot {
+  border: 1.5px dashed rgba(140, 110, 70, 0.4);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 253, 247, 0.6);
+}
+.sdk-placeholder {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  opacity: 0.75;
+  font-size: 12px;
+}
+.sdk-placeholder b {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+.sdk-placeholder p {
+  margin: 0;
+}
+.sdk-icon {
+  font-size: 20px;
+}
+
+.card-actions {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 14px;
+}
+.btn-ghost,
+.btn-save {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.btn-ghost {
+  color: #8a6f4a;
+  background: rgba(120, 95, 60, 0.1);
+}
+.btn-ghost:hover {
+  background: rgba(120, 95, 60, 0.18);
+}
+.btn-save {
+  color: #fff9ec;
+  background: linear-gradient(160deg, #e4b96a, #cf9a4e);
+  box-shadow: 0 4px 10px rgba(150, 105, 45, 0.3);
+}
+.btn-save:hover {
+  filter: brightness(1.05);
+}
+
+/* ===== 天气特效：雨滴（倾斜下落）/ 飘雪 =====
+ * transform 写成 rotate(θ) translateY(d) —— 先旋转坐标系再沿自身 Y 轴位移，
+ * 所以雨滴是"沿着倾斜方向"下落（≈14°），不是垂直落地后再整体歪一下。
+ */
+.rain-layer,
+.snow-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  overflow: hidden;
+  pointer-events: none;
+  --fall: 340px;
+  --slnt: 14deg;
+}
+.rain-layer i {
+  position: absolute;
+  top: -34px;
+  display: block;
+  border-radius: 2px;
+  transform-origin: top center;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(228, 241, 250, 0.95));
+  animation-name: rainFall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  opacity: 0;
+  will-change: transform;
+}
+@keyframes rainFall {
+  0% {
+    transform: rotate(var(--slnt)) translateY(0);
+    opacity: 0;
+  }
+  12% {
+    opacity: var(--op, 0.7);
+  }
+  100% {
+    transform: rotate(var(--slnt)) translateY(var(--fall));
+    opacity: var(--op, 0.7);
+  }
+}
+.snow-layer i {
+  position: absolute;
+  top: -14px;
+  display: block;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 0 4px rgba(255, 255, 255, 0.7);
+  animation-name: snowFall;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  opacity: 0;
+  will-change: transform;
+}
+@keyframes snowFall {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  10% {
+    opacity: var(--op, 0.8);
+  }
+  50% {
+    transform: translate(var(--sway, 12px), calc(var(--fall) * 0.5));
+  }
+  90% {
+    opacity: var(--op, 0.8);
+  }
+  100% {
+    transform: translate(0, var(--fall));
+    opacity: 0;
+  }
+}
