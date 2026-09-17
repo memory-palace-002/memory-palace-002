@@ -20,8 +20,10 @@ import { PRESETS, getPreset, getPresetDecal, ItemModel } from './ItemPresets'
 const STORAGE_KEY = 'memory-room3d/stickers-v1'
 const STAND_H = 0.26 // 贴片的显示高度（世界单位）
 
-/* 拖动活动范围（房间内）：左右 / 高度 / 前后 */
-const BOUND = { x: 2.7, yMin: 0.03, yMax: 2.75, zMin: -2.85, zMax: 3.6 }
+/* 拖动活动范围（房间内）：左右 / 高度 / 前后
+ * 相机改为「室内第一人称」后，只有镜头前方（z 更小的一侧）才可见，
+ * 所以 zMax 收紧到 -0.8：避免物品/贴片被拖到镜头背后看不见（相机在 z≈-0.35） */
+const BOUND = { x: 2.7, yMin: 0.03, yMax: 2.75, zMin: -2.85, zMax: -0.8 }
 
 const WEATHERS = [
   { key: 'sunny', icon: '☀️', label: '晴' },
@@ -82,8 +84,13 @@ interface InvItem {
 function loadItems(): InvItem[] {
   try {
     const list = JSON.parse(localStorage.getItem(ITEMS_KEY) || '[]') as InvItem[]
-    /* 老数据没有 scale 补默认值；旧版允许缩到 0.4，现在下限是 1，一并归一 */
-    return list.map((i) => ({ ...i, scale: typeof i.scale === 'number' ? Math.max(1, i.scale) : 1 }))
+    /* 老数据没有 scale 补默认值；旧版允许缩到 0.4，现在下限是 1，一并归一。
+     * 另外相机改为室内第一人称后镜头后方不可见：把跑到镜头后面的物品拉回前方 */
+    return list.map((i) => ({
+      ...i,
+      scale: typeof i.scale === 'number' ? Math.max(1, i.scale) : 1,
+      z: typeof i.z === 'number' ? clamp(i.z, BOUND.zMin, BOUND.zMax) : i.z,
+    }))
   } catch {
     return []
   }
@@ -230,12 +237,12 @@ function itemAsSticker(item: InvItem): Sticker3D {
   }
 }
 
-/* 新贴片出生点：桌前空中（不再落在桌面上），用户可再随意拖动 */
+/* 新贴片出生点：书桌前方的空中（镜头正前方，进入房间就能看到），用户可再随意拖动 */
 function spawnPose() {
   return {
     x: clamp(-0.7 + Math.random() * 1.4, -BOUND.x, BOUND.x),
-    y: clamp(0.82 + Math.random() * 0.3, BOUND.yMin, BOUND.yMax),
-    z: clamp(DESK_Z + 1.7 + Math.random() * 0.4, BOUND.zMin, BOUND.zMax),
+    y: clamp(0.92 + Math.random() * 0.36, BOUND.yMin, BOUND.yMax),
+    z: clamp(-2.2 + Math.random() * 0.6, BOUND.zMin, BOUND.zMax),
     rotY: (Math.random() - 0.5) * 0.2,
   }
 }
@@ -244,7 +251,13 @@ function spawnPose() {
 function loadStickers(): Sticker3D[] {
   try {
     const list = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as Sticker3D[]
-    return list.map((s) => ({ ...s, y: typeof s.y === 'number' ? s.y : DESK_TOP_Y, scale: typeof s.scale === 'number' ? s.scale : 1 }))
+    return list.map((s) => ({
+      ...s,
+      y: typeof s.y === 'number' ? s.y : DESK_TOP_Y,
+      /* 相机改为室内第一人称后镜头后方看不见：老存档里跑到镜头后面的贴片拉回前方 */
+      z: typeof s.z === 'number' ? clamp(s.z, BOUND.zMin, BOUND.zMax) : -1.9,
+      scale: typeof s.scale === 'number' ? s.scale : 1,
+    }))
   } catch {
     return []
   }
