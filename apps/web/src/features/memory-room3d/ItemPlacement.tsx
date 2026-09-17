@@ -89,34 +89,48 @@ function loadItems(): InvItem[] {
   }
 }
 
-/* ---------- 书柜吸附（书本放进书柜要竖着放，符合生活规律） ----------
+/* ---------- 书柜排架（四层都能放书，多本并排，且不与柜内原有装饰书重叠） ----------
  * 数值来自 Room25D.jsx 的 Bookshelf（只读参考，不修改背景文件）：
- * ROOM_W=6, BACK_Z=-3, 书柜宽 1.15 深 0.3，中心 cx = 3 - 1.15/2 - 0.35 = 2.075
- * 层板顶面 = shelfY + 0.0175；书竖放 = rotation.y = π/2（书脊朝观众）
- * 同一层上多本书按 x 排序并排插空（thickness + gap），像真实书架一样一本本立着
+ *   ROOM_W=6, BACK_Z=-3；书柜宽 1.15 深 0.3，中心 cx = 3 - 1.15/2 - 0.35 = 2.075
+ *   柜体 group 的 z = BACK_Z + D/2 + 0.03 = -2.82（下面 z 均指世界坐标）
+ *   层板 y = [0.55, 1.05, 1.55, 2.05]，板厚 0.035 → 层板顶面 = y + 0.0175
+ *   内腔：去掉两侧 0.05 厚侧板后可用半宽 0.50；深度方向约 -2.94 ~ -2.67
+ * 书本模型（ItemPresets BookModel）：封面 0.2 宽 × 0.28 高 × 0.045 厚（含壳厚 0.051）
+ *   竖放（rotY = π/2）后：沿 x 是书脊厚度、沿 z 是封面宽 0.2、总高 0.288
  */
 const SHELF = {
   cx: 2.075,
-  halfX: 0.45, // x 吸附范围
+  innerHalf: 0.5, // 书可占据的 x 半宽（不超出柜体内壁）
   ys: [0.55, 1.05, 1.55, 2.05], // 层板高度
   top: 0.0175, // 层板半厚（顶面偏移）
-  zCenter: -3 + 0.15, // 书柜体中心 z（BACK_Z + D/2）
-  zRange: [-2.95, -2.5] as [number, number], // z 落在此区间才算「放进书柜」
-  yRange: [0.35, 2.3] as [number, number],
+  zPlace: -2.81, // 书竖放后的 z（内腔偏前，避免扎进背板）
+  zRange: [-2.96, -2.55] as [number, number], // z 落在此区间才算「放进书柜」
+  yRange: [0.3, 2.35] as [number, number],
 }
-const BOOK_THICK = 0.052 // 书脊厚度（BookModel D=0.045 + 封面壳），竖放后沿 x 占宽
-const BOOK_GAP = 0.014 // 书与书之间的空隙
+const BOOK = { thick: 0.051, height: 0.288, depth: 0.2 } // 竖放后的占位
+const BOOK_GAP = 0.012 // 书与书之间的空隙
+/* 层内净高 = 层距 0.5 - 板厚 0.035，留 0.02 余量；深度方向内腔 0.27，留余量 */
+const BOOK_MAX_SCALE = Math.min((0.5 - 0.035 - 0.02) / BOOK.height, (0.27 - 0.02) / BOOK.depth) // ≈1.25
+
+/* 书柜自带的装饰书：每层已占用的 x 区间（世界坐标，来自 Room25D Bookshelf）。
+ * 用户放的书必须避开这些区间，否则会和原有建模重合穿模。 */
+const SHELF_BUILTIN: Record<number, Array<[number, number]>> = {
+  0: [[SHELF.cx - 0.475, SHELF.cx - 0.29]], // 第 1 层（自下往上）左侧三本
+  1: [[SHELF.cx - 0.475, SHELF.cx - 0.345]], // 第 2 层左侧两本
+}
+
+type Interval = [number, number]
 
 /* 书本是否落在书柜区域内 */
 const inShelfRegion = (b: { preset: string; x: number; y: number; z: number }) =>
   b.preset === 'book' &&
-  Math.abs(b.x - SHELF.cx) <= SHELF.halfX &&
+  Math.abs(b.x - SHELF.cx) <= SHELF.innerHalf + 0.12 &&
   b.z >= SHELF.zRange[0] &&
   b.z <= SHELF.zRange[1] &&
   b.y >= SHELF.yRange[0] &&
   b.y <= SHELF.yRange[1]
 
-/* y 离哪层层板最近（返回层序号） */
+/* y 离哪层层板最近（返回层序号 0~3） */
 function shelfRowIndex(y: number): number {
   let best = 0
   for (let i = 1; i < SHELF.ys.length; i++) {
@@ -125,33 +139,67 @@ function shelfRowIndex(y: number): number {
   return best
 }
 
-/** 书本是否在书柜区域内；是则返回竖放排架位：
- *  y 落到最近层板顶面，x 按同层书的顺序并排插空（多本可同时竖放不重叠） */
-function bookShelfPose(
-  item: InvItem,
-  allItems: InvItem[]
-): { x: number; y: number; rotY: number; z: number } | null {
-  if (!inShelfRegion(item)) return null
-  const row = shelfRowIndex(item.y)
-  /* 同层的其他书（已上架的），按各自拖放 x 排序 */
-  const rowBooks = allItems.filter((b) => b.id !== item.id && inShelfRegion(b) && shelfRowIndex(b.y) === row)
-  /* 把自己按 x 插进队列，再从左到右分配书位 */
-  const queue = [...rowBooks, item].sort((a, b) => a.x - b.x)
-  const widths = queue.map((b) => BOOK_THICK * (b.scale || 1))
-  const totalW = widths.reduce((s, w) => s + w, 0) + BOOK_GAP * (queue.length - 1)
-  let acc = SHELF.cx - totalW / 2
-  for (let i = 0; i < queue.length; i++) {
-    const center = acc + widths[i] / 2
-    acc += widths[i] + BOOK_GAP
-    if (queue[i].id !== item.id) continue
-    return {
-      x: clamp(center, SHELF.cx - SHELF.halfX, SHELF.cx + SHELF.halfX),
-      y: SHELF.ys[row] + SHELF.top,
-      rotY: Math.PI / 2,
-      z: SHELF.zCenter,
+/* 上架时书本的缩放：不得小于 1，也不得大到顶穿上层板或探出柜体 */
+const shelfScale = (b: { scale?: number }) => clamp(b.scale || 1, 1, BOOK_MAX_SCALE)
+
+/* 某层剩余的空隙区间（扣掉装饰书和已放的书） */
+function freeSegments(row: number, occupied: Interval[]): Interval[] {
+  const left = SHELF.cx - SHELF.innerHalf
+  const right = SHELF.cx + SHELF.innerHalf
+  const blocks = [...(SHELF_BUILTIN[row] || []), ...occupied].sort((a, b) => a[0] - b[0])
+  const segs: Interval[] = []
+  let cursor = left
+  for (const [a, b] of blocks) {
+    if (a > cursor) segs.push([cursor, Math.min(a, right)])
+    cursor = Math.max(cursor, b)
+  }
+  if (cursor < right) segs.push([cursor, right])
+  return segs.filter(([a, b]) => b - a > 0.001)
+}
+
+/* 在一层里给一本书找位置：优先贴近它自己被拖到的 x，放不下返回 null */
+function placeInRow(row: number, occupied: Interval[], preferX: number, width: number) {
+  let best: { x: number; span: Interval; dist: number } | null = null
+  for (const [a, b] of freeSegments(row, occupied)) {
+    if (b - a < width - 1e-6) continue
+    const x = clamp(preferX, a + width / 2, b - width / 2)
+    const dist = Math.abs(x - preferX)
+    if (!best || dist < best.dist) best = { x, span: [x - width / 2, x + width / 2], dist }
+  }
+  return best
+}
+
+/**
+ * 全屋书柜排架：一次性给所有「放进书柜的书」分配层位与 x，保证
+ *   ① 四层都能放；② 同层多本并排不重叠；③ 不与柜内原有装饰书重合；④ 不超出柜体内壁。
+ * 放不下的书（层都满了）不吸附，保持用户拖到的位置。
+ */
+function computeShelfLayout(items: InvItem[]): Map<string, { x: number; y: number; z: number; rotY: number; scale: number }> {
+  const result = new Map<string, { x: number; y: number; z: number; rotY: number; scale: number }>()
+  /* 自下而上依次安排，保证同层顺序稳定（不会每次渲染来回跳） */
+  const books = items.filter(inShelfRegion).sort((a, b) => a.y - b.y)
+  const occupied: Interval[][] = [[], [], [], []]
+  for (const b of books) {
+    const scale = shelfScale(b)
+    const width = BOOK.thick * scale
+    const preferred = shelfRowIndex(b.y)
+    const rows = [0, 1, 2, 3].sort((i, j) => Math.abs(i - preferred) - Math.abs(j - preferred))
+    for (const r of rows) {
+      const spot = placeInRow(r, occupied[r], b.x, width)
+      if (!spot) continue
+      occupied[r].push(spot.span)
+      occupied[r].sort((p, q) => p[0] - q[0])
+      result.set(b.id, {
+        x: spot.x,
+        y: SHELF.ys[r] + SHELF.top,
+        z: SHELF.zPlace,
+        rotY: Math.PI / 2, // 书脊朝观众
+        scale,
+      })
+      break
     }
   }
-  return null
+  return result
 }
 
 /* 物品出生点：桌面留白区（避开左端台灯） */
@@ -431,7 +479,7 @@ function StickerPlane({
 /* ---------- 3D 物品（物品栏放入的预设建模，可拖动、可点击开卡、可换贴面；原样搬入） ---------- */
 function InvItemView({
   item,
-  items,
+  shelfPose,
   picked,
   onPick,
   onDragActive,
@@ -439,7 +487,7 @@ function InvItemView({
   onScale,
 }: {
   item: InvItem
-  items: InvItem[] // 全部物品：书柜排架需要知道同层还有哪些书
+  shelfPose?: { x: number; y: number; z: number; rotY: number; scale: number } // 书柜排架位（仅书本）
   picked: boolean
   onPick: (id: string) => void
   onDragActive: (active: boolean) => void
@@ -454,9 +502,10 @@ function InvItemView({
   const wheelRef = useRef<((e: WheelEvent) => void) | null>(null) // 拖动期间的滚轮缩放
   const scaleRef = useRef(item.scale || 1)
 
+  /* 上架的书用排架算出的缩放（受层高/柜深限制），其余用用户缩放 */
   useEffect(() => {
-    scaleRef.current = item.scale || 1
-  }, [item.scale])
+    scaleRef.current = shelfPose ? shelfPose.scale : item.scale || 1
+  }, [item.scale, shelfPose])
 
   useFrame(() => {
     if (!group.current) return
@@ -469,9 +518,7 @@ function InvItemView({
 
   const def = getPreset(item.preset)
 
-  /* 书柜吸附：书本进入书柜区域 → 竖着放到最近层板，并和同层的书并排插空 */
-  const shelfPose = bookShelfPose(item, items)
-  /* 显示姿态 = 排架位（在书柜里）或原始位置 */
+  /* 显示姿态 = 书柜排架位（在书柜里）或原始位置 */
   const pose = shelfPose
     ? { x: shelfPose.x, y: shelfPose.y, z: shelfPose.z, rotY: shelfPose.rotY }
     : { x: item.x, y: item.y, z: item.z, rotY: item.rotY }
@@ -1376,6 +1423,8 @@ export type ItemPlacementApi = ReturnType<typeof useItemPlacement>
 
 /* ---------- 3D 部分：贴片 + 物品（挂在 RoomBackground 的 Canvas 里） ---------- */
 export function ItemPlacementScene({ hp }: { hp: ItemPlacementApi }) {
+  /* 书柜排架：所有书一起算，保证四层都能放且不互相重叠 */
+  const shelfLayout = useMemo(() => computeShelfLayout(hp.items), [hp.items])
   return (
     <>
       {hp.stickers.map((s) => (
@@ -1393,7 +1442,7 @@ export function ItemPlacementScene({ hp }: { hp: ItemPlacementApi }) {
         <InvItemView
           key={it.id}
           item={it}
-          items={hp.items}
+          shelfPose={shelfLayout.get(it.id)}
           picked={hp.cardOpen && hp.activeId === it.id && hp.activeKind === 'item'}
           onPick={(id) => hp.pick('item', id)}
           onDragActive={(on) => hp.markDrag('item', it.id, on)}
