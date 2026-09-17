@@ -119,6 +119,13 @@ const BOOK_GAP = 0.012 // 书与书之间的空隙
 /* 层内净高 = 层距 0.5 - 板厚 0.035，留 0.02 余量；深度方向内腔 0.27，留余量 */
 const BOOK_MAX_SCALE = Math.min((0.5 - 0.035 - 0.02) / BOOK.height, (0.27 - 0.02) / BOOK.depth) // ≈1.25
 
+/* 吸附范围：书本只要被拖到书柜这一列（且高度落在层板区间）就自动入架，
+ * 不用再按 Shift 去改深度 —— 之前改深度必须 Shift+拖动，这就是书柜交互「用不了」的根因。
+ * SNAP_X 与 inShelfRegion 的 innerHalf + 0.12 保持一致，保证「吸附 ⟺ 入架」。
+ * 退出用更大的 SNAP_OUT_X 做迟滞，避免在边界来回抖。 */
+const SNAP_X = SHELF.innerHalf + 0.12 // 0.62
+const SNAP_OUT_X = SNAP_X + 0.2 // 0.82
+
 /* 书柜自带的装饰书：每层已占用的 x 区间（世界坐标，来自 Room25D Bookshelf）。
  * 用户放的书必须避开这些区间，否则会和原有建模重合穿模。 */
 const SHELF_BUILTIN: Record<number, Array<[number, number]>> = {
@@ -515,6 +522,13 @@ function InvItemView({
   const movedRef = useRef(false)
   const wheelRef = useRef<((e: WheelEvent) => void) | null>(null) // 拖动期间的滚轮缩放
   const scaleRef = useRef(item.scale || 1)
+  /* 书柜吸附：已经上架的书从存档读回来时本身就是吸附态 */
+  const snappedRef = useRef(inShelfRegion(item))
+  /* 入架前的深度，退出吸附时还原。存档里读回来就已经在架上时，用桌面深度兜底 */
+  const freeZRef = useRef(
+    snappedRef.current || !Number.isFinite(item.z) ? DESK_Z : (item.z as number)
+  )
+  const rebuildRef = useRef(false) // 退出吸附后需要按新位置重建拖动平面
 
   /* 上架的书用排架算出的缩放（受层高/柜深限制），其余用用户缩放 */
   useEffect(() => {
@@ -592,14 +606,18 @@ function InvItemView({
     if (!d) return
     e.stopPropagation()
     const want: 'v' | 'h' = e.shiftKey ? 'h' : 'v'
-    if (want !== d.mode) {
+    /* 退出吸附后要按「还原后的位置」重建拖动平面，否则平面还停在书柜深度上，
+     * 拖出来的书会一直保持书柜的深度浮在半空。 */
+    if (want !== d.mode || rebuildRef.current) {
       const g = group.current
       if (g) {
         const wp = new THREE.Vector3()
         g.getWorldPosition(wp)
+        if (rebuildRef.current) wp.z = freeZRef.current
         d.plane.copy(buildPlane(want, wp))
         const hit = new THREE.Vector3()
         if (e.ray.intersectPlane(d.plane, hit)) d.offset.copy(wp).sub(hit)
+        rebuildRef.current = false
       }
       d.mode = want
     }
@@ -607,10 +625,31 @@ function InvItemView({
     if (!e.ray.intersectPlane(d.plane, hit)) return
     const p = hit.add(d.offset)
     movedRef.current = true
+    let z = clamp(p.z, BOUND.zMin, BOUND.zMax)
+
+    /* 书本靠近书柜 → 自动入架（把深度吸到书柜内腔，交给 computeShelfLayout 排位） */
+    if (item.preset === 'book') {
+      const dx = Math.abs(p.x - SHELF.cx)
+      const inY = p.y >= SHELF.yRange[0] && p.y <= SHELF.yRange[1]
+      if (!snappedRef.current && dx <= SNAP_X && inY) {
+        snappedRef.current = true
+        freeZRef.current = z
+      }
+      if (snappedRef.current) {
+        if (dx > SNAP_OUT_X || !inY) {
+          snappedRef.current = false // 拖离书柜 → 还原到入架前的深度
+          z = freeZRef.current
+          rebuildRef.current = true
+        } else {
+          z = SHELF.zPlace
+        }
+      }
+    }
+
     onMove({
       x: clamp(p.x, -BOUND.x, BOUND.x),
       y: clamp(p.y, BOUND.yMin, BOUND.yMax),
-      z: clamp(p.z, BOUND.zMin, BOUND.zMax),
+      z,
     })
   }
 
