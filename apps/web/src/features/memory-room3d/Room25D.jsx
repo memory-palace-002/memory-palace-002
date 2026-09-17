@@ -802,22 +802,22 @@ function Desk({ woodMap }) {
 }
 
 /* ---------- 帆布壳椅：米白圆角壳体 + 琥珀木腿（参考 clipboard 图） ---------- */
-function Chair({ woodMap, plushMap }) {
+function Chair({ woodMap }) {
   const legData = [
     [-0.19, -0.16, 0.09, -0.07],
     [0.19, -0.16, -0.09, -0.07],
     [-0.19, 0.16, 0.09, 0.07],
     [0.19, 0.16, -0.09, 0.07],
   ]
-  /* 米白绒面：柔和哑光，与沙发的短绒同一族质感 */
-  const creamFabric = <meshStandardMaterial map={plushMap} color="#f1ead9" roughness={1} />
+  /* 米白软包：柔和哑光（回到上一版质感） */
+  const creamFabric = <meshStandardMaterial color="#f1ead9" roughness={0.95} />
   return (
     <group position={[0, 0, BACK_Z + 1.75]}>
-      {/* 坐垫壳（米白短绒） */}
+      {/* 坐垫壳（米白软包） */}
       <RoundedBox args={[0.5, 0.08, 0.46]} radius={0.035} smoothness={4} position={[0, 0.44, 0]} castShadow receiveShadow>
         {creamFabric}
       </RoundedBox>
-      {/* 靠背壳（米白短绒，圆角、微微后仰） */}
+      {/* 靠背壳（米白软包，圆角、微微后仰） */}
       <RoundedBox args={[0.5, 0.44, 0.06]} radius={0.03} smoothness={4} position={[0, 0.68, 0.2]} rotation={[-0.12, 0, 0]} castShadow>
         {creamFabric}
       </RoundedBox>
@@ -843,14 +843,14 @@ function Bookshelf() {
     [-0.42, 0.55], [-0.34, 0.6], [-0.22, 0.55], [0.1, 1.05], [0.2, 0.62],
   ]
   const bookColors = ['#e8c8c8', '#c8d8c0', '#d8c8e8', '#f0e0c0', '#c0d0e0']
-  /* 柜体：浅暖米（比墙面深一档，区分层次但不压暗房间）；轻微漆面光泽 */
-  const shell = <meshPhysicalMaterial color="#eee7d9" roughness={0.6} clearcoat={0.25} clearcoatRoughness={0.4} />
+  /* 柜体：浅粉奶油木（参考图书柜的暖粉调），轻微漆面光泽 */
+  const shell = <meshPhysicalMaterial color="#eac8b6" roughness={0.6} clearcoat={0.25} clearcoatRoughness={0.4} />
   return (
     <group position={[cx, 0, BACK_Z + D / 2 + 0.03]}>
       {/* 背板 / 顶底 / 侧板（背板略浅一档，衬托彩色书脊） */}
       <mesh position={[0, H / 2, -D / 2 + 0.015]} receiveShadow>
         <boxGeometry args={[W, H, 0.03]} />
-        <meshStandardMaterial color="#f4eee1" roughness={0.85} />
+        <meshStandardMaterial color="#f3dcca" roughness={0.85} />
       </mesh>
       <mesh position={[0, H, 0]} castShadow>
         <boxGeometry args={[W + 0.06, 0.05, D]} />
@@ -965,11 +965,11 @@ function Rug() {
 }
 
 /* ---------- 布艺沙发（参考图：圆扶手 + 靠枕，放在房间左侧空位，朝向房间/镜头微倾） ---------- */
-function Sofa({ woodMap, plushMap, leatherMap, leatherBump }) {
-  /* 沙发身：短绒布（米白偏淡黄），完全哑光，靠蓬松体积体现柔软 */
-  const plush = <meshStandardMaterial map={plushMap} color="#f5edda" roughness={1} />
-  /* 扶手卷：毛绒质感，米白（比沙发身更亮一点） */
-  const fluffy = <meshStandardMaterial map={plushMap} color="#fbf8f1" roughness={1} />
+function Sofa({ woodMap }) {
+  /* 沙发身：哑光布面（米白偏淡黄），回到上一版质感 */
+  const plush = <meshStandardMaterial color="#f5edda" roughness={0.95} />
+  /* 扶手卷：同族布面，米白（比沙发身更亮一点） */
+  const fluffy = <meshStandardMaterial color="#fbf8f1" roughness={0.95} />
   return (
     <group position={[-2.05, 0, -0.7]} rotation={[0, 0.55, 0]}>
       {/* 底座（去掉了分体坐垫，改为整体软座，短绒） */}
@@ -992,17 +992,9 @@ function Sofa({ woodMap, plushMap, leatherMap, leatherBump }) {
           </mesh>
         </group>
       ))}
-      {/* 方形抱枕：棕黄皮质，细皮纹 + clearcoat 反光 */}
+      {/* 方形靠枕：焦糖色布面（回到上一版质感） */}
       <RoundedBox args={[0.36, 0.34, 0.12]} radius={0.05} smoothness={4} position={[-0.38, 0.63, -0.18]} rotation={[-0.25, 0.1, 0.06]} castShadow>
-        <meshPhysicalMaterial
-          map={leatherMap}
-          bumpMap={leatherBump}
-          bumpScale={0.022}
-          color="#c08a3e"
-          roughness={0.42}
-          clearcoat={0.55}
-          clearcoatRoughness={0.28}
-        />
+        <meshStandardMaterial color="#c9925e" roughness={0.7} />
       </RoundedBox>
       {/* 短木腿 */}
       {[
@@ -1117,13 +1109,11 @@ function WallFrames({ woodMap }) {
 
 /* ---------- 房间整体（weather: 'sunny'|'cloudy'|'rain'|'snow'|''） ---------- */
 export function Room25DModel({ weather = '', ...props }) {
-  /* 参考微缩房间摄影的三种木色：地板深红棕亮面 / 胡桃木收边与柜体 / 琥珀木椅腿 */
-  const floorMap = useMemo(() => createWoodTexture([164, 88, 52], 'rgba(72,32,16,0.55)'), [])
-  /* 胡桃木 → 浅一档的暖橡木：保留木纹与光泽，但把房间的棕色调降下来 */
-  const walnutMap = useMemo(() => createWoodTexture([178, 134, 90], 'rgba(105,70,40,0.42)'), [])
+  /* 参考 Clipboard_Screenshot（微缩房间）三种木色：深棕拼木地板 / 中棕木书桌与收边 / 琥珀木椅腿 */
+  const floorMap = useMemo(() => createWoodTexture([104, 62, 42], 'rgba(45,24,14,0.6)'), [])
+  /* 书桌/相框/收边：中棕木（参考图书桌色），保留木纹与光泽 */
+  const walnutMap = useMemo(() => createWoodTexture([158, 102, 60], 'rgba(90,50,25,0.45)'), [])
   const amberMap = useMemo(() => createWoodTexture([196, 152, 96], 'rgba(110,80,45,0.4)'), [])
-  const plushMap = useMemo(createPlushTexture, [])
-  const leather = useMemo(createLeatherTextures, []) // { map, bump }：皮质颗粒纹 + 凹凸
   const W = WEATHER[weather] || WEATHER_DEFAULT
   const skyMap = useMemo(() => createSkyTexture(W.sky, W.cloud, W.sun), [W])
   return (
@@ -1133,11 +1123,11 @@ export function Room25DModel({ weather = '', ...props }) {
       <Sunlight weather={weather} />
       <Precipitation weather={weather} />
       <Desk woodMap={walnutMap} />
-      <Chair woodMap={amberMap} plushMap={plushMap} />
+      <Chair woodMap={amberMap} />
       <Bookshelf />
       {/* 参考图新增：相框墙（右墙）+ 沙发区（左侧）+ 收边/圆毯 */}
       <WallFrames woodMap={walnutMap} />
-      <Sofa woodMap={amberMap} plushMap={plushMap} leatherMap={leather.map} leatherBump={leather.bump} />
+      <Sofa woodMap={amberMap} />
       <Pouf />
       <SideTable />
       <PottedPlant />
