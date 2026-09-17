@@ -16,14 +16,15 @@ export interface PresetDef {
   icon: string
   aspect: number // 贴面区宽高比（w/h）
   shadowR: number // 底部软影子半径
+  size: number // 包围盒最大边（m），用于限制缩放上限
   full?: boolean // 满幅贴面：图片 cover 裁剪后铺满整个贴面区（无边框），书本封面用
 }
 
 export const PRESETS: PresetDef[] = [
-  { id: 'mug', label: '马克杯', icon: '🥛', aspect: 1.15, shadowR: 0.09 },
-  { id: 'frame', label: '相框', icon: '🖼️', aspect: 1.33, shadowR: 0.15 },
-  { id: 'plant', label: '小盆栽', icon: '🪴', aspect: 1.25, shadowR: 0.09 },
-  { id: 'book', label: '一本书', icon: '📕', aspect: 0.714, shadowR: 0.12, full: true }, // 0.2/0.28 = 封面满幅
+  { id: 'mug', label: '马克杯', icon: '🥛', aspect: 1.15, shadowR: 0.09, size: 0.25 },
+  { id: 'frame', label: '相框', icon: '🖼️', aspect: 1.33, shadowR: 0.15, size: 0.45 },
+  { id: 'plant', label: '小盆栽', icon: '🪴', aspect: 1.25, shadowR: 0.09, size: 0.3 },
+  { id: 'book', label: '一本书', icon: '📕', aspect: 0.714, shadowR: 0.12, size: 0.29, full: true }, // 0.2/0.28 = 封面满幅
 ]
 
 export const getPreset = (id: string) => PRESETS.find((p) => p.id === id) || PRESETS[0]

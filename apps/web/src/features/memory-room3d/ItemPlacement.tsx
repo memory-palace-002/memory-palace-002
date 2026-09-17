@@ -47,12 +47,18 @@ interface Sticker3D {
   x: number // 世界坐标 x
   y: number // 贴片底部离地高度（世界坐标，可悬浮）
   z: number // 世界坐标 z
-  rotY: number // 朝向微偏（弧度）
+  rotY: number // 朝向微偏（弧度，Shift+滚轮可旋转）
+  scale?: number // 缩放（按住左键滚轮调整；1 = 默认显示大小）
   meta: StickerMeta | null
 }
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v))
 const uid = () => Math.random().toString(36).slice(2, 9)
+
+/* 贴片缩放范围（还原之前的缩放功能） */
+const STICKER_SCALE = { min: 0.5, max: 2.5 }
+/* 物品缩放上限：物品包围盒最大边不得超过房间（最短边 3m）的四分之一 = 0.75m */
+const ITEM_MAX_DIM = 0.75
 
 /* ---------- 物品栏（预设建模 + 用户贴图） ---------- */
 const ITEMS_KEY = 'memory-room3d/items-v1'
@@ -72,8 +78,8 @@ interface InvItem {
 function loadItems(): InvItem[] {
   try {
     const list = JSON.parse(localStorage.getItem(ITEMS_KEY) || '[]') as InvItem[]
-    /* 老数据没有 scale，补默认值 */
-    return list.map((i) => ({ ...i, scale: typeof i.scale === 'number' ? i.scale : 1 }))
+    /* 老数据没有 scale 补默认值；旧版允许缩到 0.4，现在下限是 1，一并归一 */
+    return list.map((i) => ({ ...i, scale: typeof i.scale === 'number' ? Math.max(1, i.scale) : 1 }))
   } catch {
     return []
   }
@@ -145,11 +151,11 @@ function spawnPose() {
   }
 }
 
-/* 读取本地存档：老数据没有 y（当时贴片站在桌上），补上桌面高度 */
+/* 读取本地存档：老数据没有 y（当时贴片站在桌上），补上桌面高度；没有 scale 补默认值 */
 function loadStickers(): Sticker3D[] {
   try {
     const list = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]') as Sticker3D[]
-    return list.map((s) => ({ ...s, y: typeof s.y === 'number' ? s.y : DESK_TOP_Y }))
+    return list.map((s) => ({ ...s, y: typeof s.y === 'number' ? s.y : DESK_TOP_Y, scale: typeof s.scale === 'number' ? s.scale : 1 }))
   } catch {
     return []
   }
@@ -162,12 +168,14 @@ function StickerPlane({
   onPick,
   onDragActive,
   onMove,
+  onUpdate,
 }: {
   s: Sticker3D
   picked: boolean
   onPick: (id: string) => void
   onDragActive: (active: boolean) => void
   onMove: (p: { x: number; y: number; z: number }) => void
+  onUpdate: (id: string, p: { scale?: number; rotY?: number }) => void
 }) {
   const group = useRef<THREE.Group>(null)
   const [hovered, setHovered] = useState(false)
@@ -175,6 +183,17 @@ function StickerPlane({
   /* 拖动状态：mode 'v' = 在贴片所在的竖直平面里拖（上下左右），'h' = 在当前高度的水平面里拖（前后） */
   const drag = useRef<{ mode: 'v' | 'h'; plane: THREE.Plane; offset: THREE.Vector3 } | null>(null)
   const movedRef = useRef(false) // 本次按下后是否真的拖动过（用来抑制拖完误触点击）
+  const wheelRef = useRef<((e: WheelEvent) => void) | null>(null) // 拖动期间的滚轮（缩放/旋转）
+  const scaleRef = useRef(s.scale || 1)
+  const rotRef = useRef(s.rotY) // 旋转累积（闭包里取实时值，连续滚动不丢步）
+
+  useEffect(() => {
+    scaleRef.current = s.scale || 1
+  }, [s.scale])
+
+  useEffect(() => {
+    rotRef.current = s.rotY
+  }, [s.rotY])
 
   const tex = useMemo(() => {
     const t = new THREE.TextureLoader().load(s.sticker)
@@ -187,7 +206,8 @@ function StickerPlane({
 
   useFrame(() => {
     if (!group.current) return
-    const target = hovered || picked ? 1.12 : 1
+    /* 悬停/选中放大倍率 × 用户缩放 */
+    const target = (hovered || picked ? 1.12 : 1) * scaleRef.current
     const cur = group.current.scale.x
     const next = THREE.MathUtils.lerp(cur, target, 0.18)
     group.current.scale.setScalar(next)
@@ -227,6 +247,23 @@ function StickerPlane({
     if (!e.ray.intersectPlane(plane, hit)) return
     drag.current = { mode, plane, offset: wp.clone().sub(hit) }
     movedRef.current = false
+    /* 按住左键拖动期间：滚轮缩放贴片（还原原缩放功能）；Shift+滚轮旋转贴片 */
+    const onWheel = (e2: WheelEvent) => {
+      e2.preventDefault()
+      if (e2.shiftKey) {
+        /* 旋转：上滚逆时针 / 下滚顺时针，每次约 7°（ref 累积，连续滚动不丢步） */
+        rotRef.current += e2.deltaY < 0 ? 0.12 : -0.12
+        onUpdate(s.id, { rotY: rotRef.current })
+        return
+      }
+      const f = e2.deltaY < 0 ? 1.08 : 1 / 1.08
+      const nextScale = clamp(scaleRef.current * f, STICKER_SCALE.min, STICKER_SCALE.max)
+      if (nextScale === scaleRef.current) return
+      scaleRef.current = nextScale
+      onUpdate(s.id, { scale: nextScale })
+    }
+    wheelRef.current = onWheel
+    window.addEventListener('wheel', onWheel, { passive: false })
     try {
       ;(e.target as any).setPointerCapture?.(e.pointerId)
     } catch {
@@ -267,6 +304,10 @@ function StickerPlane({
   const finishDrag = useCallback(() => {
     if (!drag.current) return
     drag.current = null
+    if (wheelRef.current) {
+      window.removeEventListener('wheel', wheelRef.current)
+      wheelRef.current = null
+    }
     setCursor(hoveredRef.current ? 'grab' : '')
     onDragActive(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -406,11 +447,14 @@ function InvItemView({
     if (!e.ray.intersectPlane(plane, hit)) return
     drag.current = { mode, plane, offset: wp.clone().sub(hit) }
     movedRef.current = false
-    /* 按住左键拖动期间：滚轮缩放物品（上滚放大 / 下滚缩小，0.4x ~ 2.5x） */
+    /* 按住左键拖动期间：滚轮缩放物品。
+     * 下限 = 默认大小（1，不能缩得比原始还小）；
+     * 上限 = 包围盒最大边达到房间四分之一（ITEM_MAX_DIM=0.75m）时的倍率。 */
     const onWheel = (e2: WheelEvent) => {
       e2.preventDefault()
       const f = e2.deltaY < 0 ? 1.08 : 1 / 1.08
-      const nextScale = clamp(scaleRef.current * f, 0.4, 2.5)
+      const maxScale = ITEM_MAX_DIM / def.size
+      const nextScale = clamp(scaleRef.current * f, 1, maxScale)
       if (nextScale === scaleRef.current) return
       scaleRef.current = nextScale
       onScale(item.id, nextScale)
@@ -1286,6 +1330,7 @@ export function ItemPlacementScene({ hp }: { hp: ItemPlacementApi }) {
           onPick={(id) => hp.pick('sticker', id)}
           onDragActive={(on) => hp.markDrag('sticker', s.id, on)}
           onMove={(p) => hp.setStickers((list) => list.map((x) => (x.id === s.id ? { ...x, ...p } : x)))}
+          onUpdate={(id, p) => hp.setStickers((list) => list.map((x) => (x.id === id ? { ...x, ...p } : x)))}
         />
       ))}
       {hp.items.map((it) => (
@@ -1328,7 +1373,7 @@ export function ItemPlacementOverlay({ hp }: { hp: ItemPlacementApi }) {
       </label>
 
       {/* 操作提示 */}
-      <p className="mr3d-hint">拖动物品/贴图随意移动 · 按住 Shift 拖动可前后调整远近 · 按住左键滚动滚轮缩放物品 · 书本拖进书柜会自动竖着上架 · 点击打开回忆</p>
+      <p className="mr3d-hint">拖动物品/贴图随意移动 · 按住 Shift 拖动可前后调整远近 · 按住左键滚动滚轮缩放（Shift+滚轮旋转贴图） · 书本拖进书柜会自动竖着上架 · 点击打开回忆</p>
 
       {/* 三选一弹窗 */}
       {hp.pending && !hp.cropMode && (
