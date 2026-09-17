@@ -57,6 +57,10 @@ const uid = () => Math.random().toString(36).slice(2, 9)
 
 /* 贴片缩放范围（还原之前的缩放功能） */
 const STICKER_SCALE = { min: 0.5, max: 2.5 }
+/* 左右墙吸附：ROOM_W=6，墙面内侧 x=±3（留 0.015 防止 z-fighting）；
+ * 距墙 WALL_SNAP 内开始吸附，越近吸得越紧（贴墙旋转 + 位置贴向墙面） */
+const WALL_INNER_X = 2.985
+const WALL_SNAP = 0.55
 /* 物品缩放上限：物品包围盒最大边不得超过房间（最短边 3m）的四分之一 = 0.75m */
 const ITEM_MAX_DIM = 0.75
 
@@ -89,6 +93,7 @@ function loadItems(): InvItem[] {
  * 数值来自 Room25D.jsx 的 Bookshelf（只读参考，不修改背景文件）：
  * ROOM_W=6, BACK_Z=-3, 书柜宽 1.15 深 0.3，中心 cx = 3 - 1.15/2 - 0.35 = 2.075
  * 层板顶面 = shelfY + 0.0175；书竖放 = rotation.y = π/2（书脊朝观众）
+ * 同一层上多本书按 x 排序并排插空（thickness + gap），像真实书架一样一本本立着
  */
 const SHELF = {
   cx: 2.075,
@@ -99,18 +104,54 @@ const SHELF = {
   zRange: [-2.95, -2.5] as [number, number], // z 落在此区间才算「放进书柜」
   yRange: [0.35, 2.3] as [number, number],
 }
+const BOOK_THICK = 0.052 // 书脊厚度（BookModel D=0.045 + 封面壳），竖放后沿 x 占宽
+const BOOK_GAP = 0.014 // 书与书之间的空隙
 
-/** 书本是否在书柜区域内；是则返回竖放吸附位（y 落到最近层板顶面） */
-function bookShelfPose(item: InvItem): { y: number; rotY: number; z: number } | null {
-  if (item.preset !== 'book') return null
-  if (Math.abs(item.x - SHELF.cx) > SHELF.halfX) return null
-  if (item.z < SHELF.zRange[0] || item.z > SHELF.zRange[1]) return null
-  if (item.y < SHELF.yRange[0] || item.y > SHELF.yRange[1]) return null
-  let best = SHELF.ys[0]
-  for (const y of SHELF.ys) {
-    if (Math.abs(y + SHELF.top - item.y) < Math.abs(best + SHELF.top - item.y)) best = y
+/* 书本是否落在书柜区域内 */
+const inShelfRegion = (b: { preset: string; x: number; y: number; z: number }) =>
+  b.preset === 'book' &&
+  Math.abs(b.x - SHELF.cx) <= SHELF.halfX &&
+  b.z >= SHELF.zRange[0] &&
+  b.z <= SHELF.zRange[1] &&
+  b.y >= SHELF.yRange[0] &&
+  b.y <= SHELF.yRange[1]
+
+/* y 离哪层层板最近（返回层序号） */
+function shelfRowIndex(y: number): number {
+  let best = 0
+  for (let i = 1; i < SHELF.ys.length; i++) {
+    if (Math.abs(SHELF.ys[i] + SHELF.top - y) < Math.abs(SHELF.ys[best] + SHELF.top - y)) best = i
   }
-  return { y: best + SHELF.top, rotY: Math.PI / 2, z: SHELF.zCenter }
+  return best
+}
+
+/** 书本是否在书柜区域内；是则返回竖放排架位：
+ *  y 落到最近层板顶面，x 按同层书的顺序并排插空（多本可同时竖放不重叠） */
+function bookShelfPose(
+  item: InvItem,
+  allItems: InvItem[]
+): { x: number; y: number; rotY: number; z: number } | null {
+  if (!inShelfRegion(item)) return null
+  const row = shelfRowIndex(item.y)
+  /* 同层的其他书（已上架的），按各自拖放 x 排序 */
+  const rowBooks = allItems.filter((b) => b.id !== item.id && inShelfRegion(b) && shelfRowIndex(b.y) === row)
+  /* 把自己按 x 插进队列，再从左到右分配书位 */
+  const queue = [...rowBooks, item].sort((a, b) => a.x - b.x)
+  const widths = queue.map((b) => BOOK_THICK * (b.scale || 1))
+  const totalW = widths.reduce((s, w) => s + w, 0) + BOOK_GAP * (queue.length - 1)
+  let acc = SHELF.cx - totalW / 2
+  for (let i = 0; i < queue.length; i++) {
+    const center = acc + widths[i] / 2
+    acc += widths[i] + BOOK_GAP
+    if (queue[i].id !== item.id) continue
+    return {
+      x: clamp(center, SHELF.cx - SHELF.halfX, SHELF.cx + SHELF.halfX),
+      y: SHELF.ys[row] + SHELF.top,
+      rotY: Math.PI / 2,
+      z: SHELF.zCenter,
+    }
+  }
+  return null
 }
 
 /* 物品出生点：桌面留白区（避开左端台灯） */
@@ -206,11 +247,24 @@ function StickerPlane({
 
   useFrame(() => {
     if (!group.current) return
+    const g = group.current
     /* 悬停/选中放大倍率 × 用户缩放 */
     const target = (hovered || picked ? 1.12 : 1) * scaleRef.current
-    const cur = group.current.scale.x
+    const cur = g.scale.x
     const next = THREE.MathUtils.lerp(cur, target, 0.18)
-    group.current.scale.setScalar(next)
+    g.scale.setScalar(next)
+
+    /* 左右墙吸附：靠近时平滑转到贴墙视角（左墙朝 +x，右墙朝 -x），位置也贴向墙面 */
+    const dL = s.x + 3 // 距左墙
+    const dR = 3 - s.x // 距右墙
+    const nearLeft = dL <= dR
+    const d = Math.min(dL, dR)
+    const raw = clamp((WALL_SNAP - d) / (WALL_SNAP - 0.08), 0, 1)
+    const k = raw * raw * (3 - 2 * raw) // smoothstep，贴得越近越「实」
+    const wallRot = nearLeft ? Math.PI / 2 : -Math.PI / 2
+    const wallX = nearLeft ? -WALL_INNER_X : WALL_INNER_X
+    g.position.x = THREE.MathUtils.lerp(s.x, wallX, k)
+    g.rotation.y = THREE.MathUtils.lerp(s.rotY, wallRot, k)
   })
 
   const worldH = STAND_H
@@ -377,6 +431,7 @@ function StickerPlane({
 /* ---------- 3D 物品（物品栏放入的预设建模，可拖动、可点击开卡、可换贴面；原样搬入） ---------- */
 function InvItemView({
   item,
+  items,
   picked,
   onPick,
   onDragActive,
@@ -384,6 +439,7 @@ function InvItemView({
   onScale,
 }: {
   item: InvItem
+  items: InvItem[] // 全部物品：书柜排架需要知道同层还有哪些书
   picked: boolean
   onPick: (id: string) => void
   onDragActive: (active: boolean) => void
@@ -413,11 +469,11 @@ function InvItemView({
 
   const def = getPreset(item.preset)
 
-  /* 书柜吸附：书本进入书柜区域 → 竖着放到最近层板上 */
-  const shelfPose = bookShelfPose(item)
-  /* 显示姿态 = 吸附位（在书柜里）或原始位置 */
+  /* 书柜吸附：书本进入书柜区域 → 竖着放到最近层板，并和同层的书并排插空 */
+  const shelfPose = bookShelfPose(item, items)
+  /* 显示姿态 = 排架位（在书柜里）或原始位置 */
   const pose = shelfPose
-    ? { x: item.x, y: shelfPose.y, z: shelfPose.z, rotY: shelfPose.rotY }
+    ? { x: shelfPose.x, y: shelfPose.y, z: shelfPose.z, rotY: shelfPose.rotY }
     : { x: item.x, y: item.y, z: item.z, rotY: item.rotY }
 
   /* 影子：桌面范围内落桌面，否则落地板（书柜里的书影子落在层板上） */
@@ -1337,6 +1393,7 @@ export function ItemPlacementScene({ hp }: { hp: ItemPlacementApi }) {
         <InvItemView
           key={it.id}
           item={it}
+          items={hp.items}
           picked={hp.cardOpen && hp.activeId === it.id && hp.activeKind === 'item'}
           onPick={(id) => hp.pick('item', id)}
           onDragActive={(on) => hp.markDrag('item', it.id, on)}
@@ -1373,7 +1430,7 @@ export function ItemPlacementOverlay({ hp }: { hp: ItemPlacementApi }) {
       </label>
 
       {/* 操作提示 */}
-      <p className="mr3d-hint">拖动物品/贴图随意移动 · 按住 Shift 拖动可前后调整远近 · 按住左键滚动滚轮缩放（Shift+滚轮旋转贴图） · 书本拖进书柜会自动竖着上架 · 点击打开回忆</p>
+      <p className="mr3d-hint">拖动物品/贴图随意移动 · 按住 Shift 拖动可前后调整远近 · 按住左键滚动滚轮缩放（Shift+滚轮旋转贴图） · 书本拖进书柜会自动竖着上架，多本同层并排 · 贴图靠近左右墙会自动贴墙吸附 · 点击打开回忆</p>
 
       {/* 三选一弹窗 */}
       {hp.pending && !hp.cropMode && (
