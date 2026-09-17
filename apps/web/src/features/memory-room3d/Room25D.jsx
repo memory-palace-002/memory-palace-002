@@ -162,6 +162,92 @@ function createGinghamTexture() {
   return t
 }
 
+// 皮革：细密颗粒 + 浅折痕；返回 { map, bump }（用同一套噪点画两遍：彩色版做贴图、灰度版做凹凸）
+function createLeatherTextures() {
+  const SIZE = 256
+  const paint = (ctx, base, dark, light) => {
+    ctx.fillStyle = base
+    ctx.fillRect(0, 0, SIZE, SIZE)
+    /* 皮革颗粒（大小不一的高光/暗点，凑出皮面的细密纹路） */
+    for (let i = 0; i < 3200; i++) {
+      const x = Math.random() * SIZE
+      const y = Math.random() * SIZE
+      const r = 0.5 + Math.random() * 1.5
+      ctx.fillStyle = Math.random() < 0.5 ? light : dark
+      ctx.beginPath()
+      ctx.arc(x, y, r, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    /* 浅浅的折痕（长波浪线，让皮面有使用感） */
+    for (let i = 0; i < 26; i++) {
+      ctx.strokeStyle = dark
+      ctx.lineWidth = 0.6 + Math.random() * 1.2
+      ctx.beginPath()
+      let x = Math.random() * SIZE
+      let y = Math.random() * SIZE
+      ctx.moveTo(x, y)
+      const seg = 5 + Math.floor(Math.random() * 6)
+      for (let s = 0; s < seg; s++) {
+        x += (Math.random() - 0.5) * 46
+        y += (Math.random() - 0.5) * 46
+        ctx.lineTo(x, y)
+      }
+      ctx.stroke()
+    }
+  }
+  const mk = (mode) => {
+    const c = document.createElement('canvas')
+    c.width = c.height = SIZE
+    const ctx = c.getContext('2d')
+    if (mode === 'color') paint(ctx, '#cfcfcf', 'rgba(0,0,0,0.055)', 'rgba(255,255,255,0.06)')
+    else paint(ctx, '#808080', 'rgba(0,0,0,0.45)', 'rgba(255,255,255,0.45)')
+    const t = new THREE.CanvasTexture(c)
+    t.colorSpace = mode === 'color' ? THREE.SRGBColorSpace : THREE.NoColorSpace
+    t.wrapS = t.wrapT = THREE.RepeatWrapping
+    t.repeat.set(2, 2)
+    t.anisotropy = 4
+    return t
+  }
+  return { map: mk('color'), bump: mk('bump') }
+}
+
+// 短绒 / 毛绒：极密的明暗点 + 短纤维，配 roughness=1 出绒面哑光感
+function createPlushTexture() {
+  const SIZE = 256
+  const c = document.createElement('canvas')
+  c.width = c.height = SIZE
+  const ctx = c.getContext('2d')
+  ctx.fillStyle = '#efefef'
+  ctx.fillRect(0, 0, SIZE, SIZE)
+  for (let i = 0; i < 5200; i++) {
+    const x = Math.random() * SIZE
+    const y = Math.random() * SIZE
+    ctx.fillStyle = Math.random() < 0.5 ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.07)'
+    ctx.beginPath()
+    ctx.arc(x, y, 0.5 + Math.random(), 0, Math.PI * 2)
+    ctx.fill()
+  }
+  /* 绒毛短纤维 */
+  for (let i = 0; i < 1100; i++) {
+    const x = Math.random() * SIZE
+    const y = Math.random() * SIZE
+    const a = Math.random() * Math.PI * 2
+    const l = 1.5 + Math.random() * 2.5
+    ctx.strokeStyle = Math.random() < 0.5 ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.06)'
+    ctx.lineWidth = 0.7
+    ctx.beginPath()
+    ctx.moveTo(x, y)
+    ctx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l)
+    ctx.stroke()
+  }
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  t.wrapS = t.wrapT = THREE.RepeatWrapping
+  t.repeat.set(3, 3)
+  t.anisotropy = 4
+  return t
+}
+
 // 窗外天空：渐变 + 簇状云团（cloudAmount 越大云越厚，雨天接近满云）
 // sun=true 时画太阳：亮核 + 多层光晕 + 放射光芒（晴天专属）
 function createSkyTexture([top, bottom], cloudAmount, sun = false) {
@@ -636,16 +722,16 @@ function Desk({ woodMap }) {
         <boxGeometry args={[DESK_L, 0.06, 0.62]} />
         <meshPhysicalMaterial map={woodMap} roughness={0.45} clearcoat={0.3} clearcoatRoughness={0.35} />
       </mesh>
-      {/* 左抽屉柱 */}
+      {/* 左抽屉柱（与桌面同色：胡桃木纹 + 轻微木头光泽） */}
       <mesh position={[-DESK_L / 2 + 0.25, 0.5, DESK_Z]} castShadow>
         <boxGeometry args={[0.46, 0.94, 0.56]} />
-        <meshStandardMaterial color={FURNITURE_CREAM} roughness={0.85} />
+        <meshPhysicalMaterial map={woodMap} roughness={0.5} clearcoat={0.22} clearcoatRoughness={0.45} />
       </mesh>
       {drawerYs.map((y) => (
         <group key={`l${y}`}>
           <mesh position={[-DESK_L / 2 + 0.25, y, DESK_Z + 0.29]}>
             <boxGeometry args={[0.4, 0.2, 0.025]} />
-            <meshStandardMaterial color="#f7f1e4" roughness={0.85} />
+            <meshPhysicalMaterial map={woodMap} roughness={0.5} clearcoat={0.22} clearcoatRoughness={0.45} />
           </mesh>
           <mesh position={[-DESK_L / 2 + 0.25, y, DESK_Z + 0.315]} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.011, 0.011, 0.018, 12]} />
@@ -653,16 +739,16 @@ function Desk({ woodMap }) {
           </mesh>
         </group>
       ))}
-      {/* 右抽屉柜 */}
+      {/* 右抽屉柜（同样与桌面同色） */}
       <mesh position={[DESK_L / 2 - 0.5, 0.5, DESK_Z]} castShadow>
         <boxGeometry args={[0.85, 0.94, 0.56]} />
-        <meshStandardMaterial color={FURNITURE_CREAM} roughness={0.85} />
+        <meshPhysicalMaterial map={woodMap} roughness={0.5} clearcoat={0.22} clearcoatRoughness={0.45} />
       </mesh>
       {[0.32, 0.66].map((y) => (
         <group key={`r${y}`}>
           <mesh position={[DESK_L / 2 - 0.5, y, DESK_Z + 0.29]}>
             <boxGeometry args={[0.75, 0.26, 0.025]} />
-            <meshStandardMaterial color="#f7f1e4" roughness={0.85} />
+            <meshPhysicalMaterial map={woodMap} roughness={0.5} clearcoat={0.22} clearcoatRoughness={0.45} />
           </mesh>
           <mesh position={[DESK_L / 2 - 0.5, y, DESK_Z + 0.315]} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.011, 0.011, 0.018, 12]} />
@@ -691,22 +777,34 @@ function Desk({ woodMap }) {
 }
 
 /* ---------- 帆布壳椅：米白圆角壳体 + 琥珀木腿（参考 clipboard 图） ---------- */
-function Chair({ woodMap }) {
+function Chair({ woodMap, leatherMap, leatherBump }) {
   const legData = [
     [-0.19, -0.16, 0.09, -0.07],
     [0.19, -0.16, -0.09, -0.07],
     [-0.19, 0.16, 0.09, 0.07],
     [0.19, 0.16, -0.09, 0.07],
   ]
+  /* 黑皮：细皮纹凹凸 + clearcoat 轻微反光 */
+  const blackLeather = (
+    <meshPhysicalMaterial
+      map={leatherMap}
+      bumpMap={leatherBump}
+      bumpScale={0.005}
+      color="#2a2622"
+      roughness={0.4}
+      clearcoat={0.6}
+      clearcoatRoughness={0.24}
+    />
+  )
   return (
     <group position={[0, 0, BACK_Z + 1.75]}>
-      {/* 坐垫壳（软：哑光帆布质感） */}
+      {/* 坐垫壳（黑色皮质，带光泽） */}
       <RoundedBox args={[0.5, 0.08, 0.46]} radius={0.035} smoothness={4} position={[0, 0.44, 0]} castShadow receiveShadow>
-        <meshStandardMaterial color={SHELL_CANVAS} roughness={0.95} />
+        {blackLeather}
       </RoundedBox>
-      {/* 靠背壳（圆角、微微后仰） */}
+      {/* 靠背壳（黑色皮质，圆角、微微后仰） */}
       <RoundedBox args={[0.5, 0.44, 0.06]} radius={0.03} smoothness={4} position={[0, 0.68, 0.2]} rotation={[-0.12, 0, 0]} castShadow>
-        <meshStandardMaterial color={SHELL_CANVAS} roughness={0.95} />
+        {blackLeather}
       </RoundedBox>
       {/* 四条外撇琥珀木腿（硬：木质） */}
       {legData.map(([x, z, rz, rx], i) => (
@@ -850,39 +948,44 @@ function Rug() {
 }
 
 /* ---------- 布艺沙发（参考图：圆扶手 + 靠枕，放在房间左侧空位，朝向房间/镜头微倾） ---------- */
-function Sofa({ woodMap }) {
-  const cream = '#f1ead9'
+function Sofa({ woodMap, plushMap, leatherMap, leatherBump }) {
+  /* 沙发身：短绒布（米白偏淡黄），完全哑光，靠蓬松体积体现柔软 */
+  const plush = <meshStandardMaterial map={plushMap} color="#f5edda" roughness={1} />
+  /* 扶手卷：毛绒质感，米白（比沙发身更亮一点） */
+  const fluffy = <meshStandardMaterial map={plushMap} color="#fbf8f1" roughness={1} />
   return (
     <group position={[-2.05, 0, -0.7]} rotation={[0, 0.55, 0]}>
-      {/* 底座 */}
+      {/* 底座（去掉了分体坐垫，改为整体软座，短绒） */}
       <RoundedBox args={[1.5, 0.32, 0.75]} radius={0.07} smoothness={4} position={[0, 0.3, 0]} castShadow receiveShadow>
-        <meshStandardMaterial color={cream} roughness={0.95} />
+        {plush}
       </RoundedBox>
-      {/* 坐垫 ×2 */}
-      {[-0.36, 0.36].map((x) => (
-        <RoundedBox key={x} args={[0.64, 0.15, 0.62]} radius={0.055} smoothness={4} position={[x, 0.52, 0.03]} castShadow>
-          <meshStandardMaterial color="#f6f0e2" roughness={0.95} />
-        </RoundedBox>
-      ))}
       {/* 靠背（微微后仰） */}
       <RoundedBox args={[1.5, 0.5, 0.18]} radius={0.07} smoothness={4} position={[0, 0.72, -0.29]} rotation={[-0.08, 0, 0]} castShadow>
-        <meshStandardMaterial color={cream} roughness={0.95} />
+        {plush}
       </RoundedBox>
-      {/* 扶手（圆角箱体 + 顶部的圆扶手卷） */}
+      {/* 扶手（圆角箱体 + 顶部的毛绒卷） */}
       {[-0.68, 0.68].map((x) => (
         <group key={x}>
           <RoundedBox args={[0.2, 0.38, 0.7]} radius={0.08} smoothness={4} position={[x, 0.52, 0]} castShadow>
-            <meshStandardMaterial color={cream} roughness={0.95} />
+            {plush}
           </RoundedBox>
           <mesh position={[x, 0.74, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
             <cylinderGeometry args={[0.1, 0.1, 0.68, 16]} />
-            <meshStandardMaterial color={cream} roughness={0.95} />
+            {fluffy}
           </mesh>
         </group>
       ))}
-      {/* 靠枕（参考图：焦糖色皮质靠枕，奶油沙发上的点缀） */}
-      <RoundedBox args={[0.36, 0.34, 0.12]} radius={0.05} smoothness={4} position={[-0.38, 0.68, -0.16]} rotation={[-0.25, 0.1, 0.06]} castShadow>
-        <meshStandardMaterial color="#c9925e" roughness={0.7} />
+      {/* 方形抱枕：棕黄皮质，细皮纹 + clearcoat 反光 */}
+      <RoundedBox args={[0.36, 0.34, 0.12]} radius={0.05} smoothness={4} position={[-0.38, 0.63, -0.18]} rotation={[-0.25, 0.1, 0.06]} castShadow>
+        <meshPhysicalMaterial
+          map={leatherMap}
+          bumpMap={leatherBump}
+          bumpScale={0.006}
+          color="#c08a3e"
+          roughness={0.42}
+          clearcoat={0.55}
+          clearcoatRoughness={0.28}
+        />
       </RoundedBox>
       {/* 短木腿 */}
       {[
@@ -1001,6 +1104,8 @@ export function Room25DModel({ weather = '', ...props }) {
   const floorMap = useMemo(() => createWoodTexture([164, 88, 52], 'rgba(72,32,16,0.55)'), [])
   const walnutMap = useMemo(() => createWoodTexture([130, 76, 46], 'rgba(55,26,12,0.5)'), [])
   const amberMap = useMemo(() => createWoodTexture([196, 152, 96], 'rgba(110,80,45,0.4)'), [])
+  const plushMap = useMemo(createPlushTexture, [])
+  const leather = useMemo(createLeatherTextures, []) // { map, bump }：皮质颗粒纹 + 凹凸
   const W = WEATHER[weather] || WEATHER_DEFAULT
   const skyMap = useMemo(() => createSkyTexture(W.sky, W.cloud, W.sun), [W])
   return (
@@ -1010,11 +1115,11 @@ export function Room25DModel({ weather = '', ...props }) {
       <Sunlight weather={weather} />
       <Precipitation weather={weather} />
       <Desk woodMap={walnutMap} />
-      <Chair woodMap={amberMap} />
+      <Chair woodMap={amberMap} leatherMap={leather.map} leatherBump={leather.bump} />
       <Bookshelf woodMap={walnutMap} />
       {/* 参考图新增：相框墙（右墙）+ 沙发区（左侧）+ 收边/圆毯 */}
       <WallFrames woodMap={walnutMap} />
-      <Sofa woodMap={amberMap} />
+      <Sofa woodMap={amberMap} plushMap={plushMap} leatherMap={leather.map} leatherBump={leather.bump} />
       <Pouf />
       <SideTable />
       <PottedPlant />
