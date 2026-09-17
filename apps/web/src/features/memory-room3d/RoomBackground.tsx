@@ -19,7 +19,8 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { Room25DModel } from './Room25D'
+import { Room25DModel, DESK_DRAWER } from './Room25D'
+import DrawerFolder from './DrawerFolder'
 
 /* ---------- 视角关键位姿 ---------- */
 /* 鸟瞰：高空斜俯视，能看全地板 + 后墙 + 两侧墙（天花板是单面材质，从上方自动不可见） */
@@ -36,10 +37,21 @@ const IN = {
   target: new THREE.Vector3(-0.42, 1.0, -2.45),
   fov: 58,
 }
+/* 抽屉俯视：镜头停在抽屉正上方偏前，略微前倾 22° 左右，能看进抽屉内部。
+ * 全部由 Room25D 导出的 DESK_DRAWER 推导，改抽屉位置镜头会自动跟上。 */
+const DRAWER_MID_Z = DESK_DRAWER.z + DESK_DRAWER.travel / 2 // 完全拉出后抽屉内腔的中心 z
+const DRAWER_VIEW = {
+  pos: new THREE.Vector3(DESK_DRAWER.x, DESK_DRAWER.y + 0.72, DRAWER_MID_Z + 0.32),
+  target: new THREE.Vector3(DESK_DRAWER.x, DESK_DRAWER.y - 0.11, DRAWER_MID_Z - 0.01),
+  fov: 52,
+}
+
 /* 推进曲线的控制点：让镜头从房间正前方（没有墙的那一面）低空俯冲进来，
  * 既不会穿过天花板，也不会从墙里穿过去 */
 const FLY_CTRL = new THREE.Vector3(0.6, 1.7, 3.2)
 const FLY_DURATION = 2.4 // 秒
+/* 室内 ↔ 抽屉：距离短，1.1s 够用且不拖沓 */
+const DRAWER_FLY_DURATION = 1.1 // 秒
 
 /* 转头参数（只有按住鼠标左键在画布上拖动才生效，松开后视角固定不动）
  * 左键同时用于「选中/打开回忆卡片」和「拖动物品」，所以加了三重防护：
@@ -58,7 +70,20 @@ const DRAG_THRESHOLD = 4 // px：位移超过这个距离才算「拖动转头�
 /* 鸟瞰时的鼠标视差幅度 */
 const PARALLAX = { x: 0.35, y: 0.18 }
 
-type Phase = 'overview' | 'entering' | 'indoor'
+type Phase = 'overview' | 'entering' | 'indoor' | 'drawer'
+
+type View = { pos: THREE.Vector3; target: THREE.Vector3; fov: number }
+
+const UP = new THREE.Vector3(0, 1, 0)
+/* 相机的朝向四元数（Matrix4.lookAt 是相机约定：-Z 为前方，不是 Object3D 的 +Z） */
+const _lookMat = new THREE.Matrix4()
+function viewQuaternion(v: View): THREE.Quaternion {
+  _lookMat.lookAt(v.pos, v.target, UP)
+  return new THREE.Quaternion().setFromRotationMatrix(_lookMat)
+}
+const DRAWER_Q = viewQuaternion(DRAWER_VIEW)
+
+const easeInOutCubic = (u: number) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2)
 
 /* ---------- 相机：三段式运镜 ---------- */
 function CinematicRig({
@@ -84,12 +109,26 @@ function CinematicRig({
   pausedRef.current = paused
   const cb = useRef(onLookStart)
   cb.current = onLookStart
-  const flyT = useRef(0)
+  const arriveRef = useRef(onArrive)
+  arriveRef.current = onArrive
+  /* 一次运镜：从「按下开关那一刻的真实相机状态」飞到目标视角，
+   * 所以不管是 鸟瞰→室内、室内→抽屉、抽屉→室内 都能复用同一套插值。 */
+  const fly = useRef<{
+    t: number
+    dur: number
+    fromPos: THREE.Vector3
+    toPos: THREE.Vector3
+    ctrl: THREE.Vector3 | null // 有控制点时走二次贝塞尔（进屋那条弧线）
+    fromQ: THREE.Quaternion
+    toQ: THREE.Quaternion
+    fromFov: number
+    toFov: number
+  } | null>(null)
   const pos = useRef(new THREE.Vector3())
-  const target = useRef(new THREE.Vector3())
   const mat = useRef(new THREE.Matrix4())
   const qBase = useRef(new THREE.Quaternion())
   const qOffset = useRef(new THREE.Quaternion())
+  const qTmp = useRef(new THREE.Quaternion())
   const euler = useRef(new THREE.Euler(0, 0, 0, 'YXZ'))
 
   /* 鼠标位置（全窗口，不需要hover在画布上） */
@@ -152,9 +191,39 @@ function CinematicRig({
     }
   }, [])
 
+  /* 阶段切换 → 起一次运镜 */
+  const prevPhase = useRef<Phase>('overview')
   useEffect(() => {
-    if (phase === 'entering') flyT.current = 0
+    const prev = prevPhase.current
+    prevPhase.current = phase
+    if (phase === 'overview') {
+      fly.current = null
+      return
+    }
+    /* 进屋：走带控制点的弧线；室内/抽屉之间：直线插值就够（都在房间里，不会穿墙） */
+    if (phase === 'entering') {
+      startFly(IN, FLY_DURATION, FLY_CTRL)
+      return
+    }
+    /* entering 结束时已经落到室内了，不要再飞一次（否则会多出一段 0 距离的等待） */
+    if (phase === 'indoor' && prev === 'entering') return
+    startFly(phase === 'drawer' ? DRAWER_VIEW : IN, DRAWER_FLY_DURATION, null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase])
+
+  function startFly(to: View, dur: number, ctrl: THREE.Vector3 | null) {
+    fly.current = {
+      t: 0,
+      dur,
+      fromPos: camera.position.clone(),
+      toPos: to.pos.clone(),
+      ctrl,
+      fromQ: camera.quaternion.clone(),
+      toQ: viewQuaternion(to),
+      fromFov: camera.fov,
+      toFov: to.fov,
+    }
+  }
 
   useFrame((_, delta) => {
     const dt = Math.min(delta, 0.05)
@@ -174,27 +243,49 @@ function CinematicRig({
       return
     }
 
-    /* ② 推进：位置走二次贝塞尔，视线与 fov 同步插值 */
-    if (phase === 'entering') {
-      flyT.current += dt
-      const u = Math.min(1, flyT.current / FLY_DURATION)
-      const e = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2 // easeInOutCubic
-      const iv = 1 - e
-      pos.current.set(
-        iv * iv * OVER.pos.x + 2 * iv * e * FLY_CTRL.x + e * e * IN.pos.x,
-        iv * iv * OVER.pos.y + 2 * iv * e * FLY_CTRL.y + e * e * IN.pos.y,
-        iv * iv * OVER.pos.z + 2 * iv * e * FLY_CTRL.z + e * e * IN.pos.z
-      )
+    /* ② 运镜中：位置（贝塞尔或直线）+ 朝向四元数 slerp + fov，三者同步插值 */
+    const f = fly.current
+    if (f) {
+      f.t += dt
+      const u = Math.min(1, f.t / f.dur)
+      const e = easeInOutCubic(u)
+      if (f.ctrl) {
+        const iv = 1 - e
+        pos.current.set(
+          iv * iv * f.fromPos.x + 2 * iv * e * f.ctrl.x + e * e * f.toPos.x,
+          iv * iv * f.fromPos.y + 2 * iv * e * f.ctrl.y + e * e * f.toPos.y,
+          iv * iv * f.fromPos.z + 2 * iv * e * f.ctrl.z + e * e * f.toPos.z
+        )
+      } else {
+        pos.current.lerpVectors(f.fromPos, f.toPos, e)
+      }
       camera.position.copy(pos.current)
-      target.current.lerpVectors(OVER.target, IN.target, e)
-      camera.lookAt(target.current)
-      camera.fov = THREE.MathUtils.lerp(OVER.fov, IN.fov, e)
+      /* 用四元数 slerp 而不是逐帧 lookAt：转向更顺，且不会产生滚转 */
+      qTmp.current.copy(f.fromQ).slerp(f.toQ, e)
+      camera.quaternion.copy(qTmp.current)
+      camera.fov = THREE.MathUtils.lerp(f.fromFov, f.toFov, e)
       camera.updateProjectionMatrix()
-      if (u >= 1) onArrive()
+      if (u >= 1) {
+        fly.current = null
+        if (phase === 'entering') arriveRef.current()
+      }
       return
     }
 
-    /* ③ 室内：站位固定，只有右键拖动改变 aim；松手后 aim 不变，视角就固定住 */
+    if (phase === 'entering') return // 运镜还没起飞（等 effect 触发），先别动
+
+    /* ③ 抽屉俯视：定在抽屉上方，不再响应转头 */
+    if (phase === 'drawer') {
+      if (camera.fov !== DRAWER_VIEW.fov) {
+        camera.fov = DRAWER_VIEW.fov
+        camera.updateProjectionMatrix()
+      }
+      camera.position.copy(DRAWER_VIEW.pos)
+      camera.quaternion.copy(DRAWER_Q)
+      return
+    }
+
+    /* ④ 室内：站位固定，只有拖动改变 aim；松手后 aim 不变，视角就固定住 */
     if (!paused) {
       look.current.yaw = THREE.MathUtils.damp(look.current.yaw, aim.current.yaw, LOOK_LAMBDA, dt)
       look.current.pitch = THREE.MathUtils.damp(look.current.pitch, aim.current.pitch, LOOK_LAMBDA, dt)
@@ -261,6 +352,47 @@ const HINT_STYLE: CSSProperties = {
   animation: 'mr3d-hint-pulse 2.2s ease-in-out infinite',
 }
 
+/* ---------- 抽屉打开时的背景虚化 ----------
+ * backdrop-filter 会把整个画布都糊掉，所以用 mask 在中间挖一个「清晰的洞」，
+ * 让抽屉本身保持清晰、四周（房间其余部分）被虚化 + 压暗，形成景深聚焦的效果。 */
+const BLUR_STYLE: CSSProperties = {
+  position: 'absolute',
+  inset: 0,
+  pointerEvents: 'none',
+  zIndex: 4,
+  backdropFilter: 'blur(9px) saturate(0.85)',
+  WebkitBackdropFilter: 'blur(9px) saturate(0.85)',
+  background: 'radial-gradient(ellipse 46% 42% at 50% 52%, rgba(0,0,0,0) 55%, rgba(30,22,12,0.4) 100%)',
+  maskImage: 'radial-gradient(ellipse 30% 27% at 50% 52%, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 52%, #000 100%)',
+  WebkitMaskImage:
+    'radial-gradient(ellipse 30% 27% at 50% 52%, rgba(0,0,0,0) 0%, rgba(0,0,0,0) 52%, #000 100%)',
+  animation: 'mr3d-fade-in .55s ease both',
+}
+
+/* 弹窗容器：水平居中，垂直略偏下（给上方抽屉留空间） */
+const POPUP_WRAP_STYLE: CSSProperties = {
+  position: 'absolute',
+  left: '50%',
+  top: '58%',
+  transform: 'translate(-50%, -50%)',
+  zIndex: 6,
+}
+
+const DRAWER_HINT_STYLE: CSSProperties = {
+  position: 'absolute',
+  left: '50%',
+  bottom: '4%',
+  transform: 'translateX(-50%)',
+  padding: '6px 16px',
+  borderRadius: 999,
+  background: 'rgba(61, 52, 40, 0.35)',
+  color: '#fffaf0',
+  fontSize: 12,
+  letterSpacing: 1,
+  pointerEvents: 'none',
+  zIndex: 5,
+}
+
 /* ---------- 房间背景 ----------
  * weather        天气（sunny | cloudy | rain | snow | ''）
  * cameraPaused   物品拖拽中 → 暂停转头（由物品侧传入，本组件不关心来源）
@@ -275,8 +407,17 @@ export default function RoomBackground({
   cameraPaused?: boolean
   children?: ReactNode
 }) {
-  const [phase, setPhase] = useState<Phase>('overview')
-  const [looked, setLooked] = useState(false) // 用户是否已经用过右键转头
+  const [base, setBase] = useState<Phase>('overview') // 鸟瞰 / 推进中 / 室内
+  const [drawerOpen, setDrawerOpen] = useState(false) // 抽屉是否拉出
+  const [folderOpen, setFolderOpen] = useState(false) // 文件夹弹窗是否展开
+  const [looked, setLooked] = useState(false) // 用户是否已经拖动转过头
+  /* 抽屉拉出时镜头切到抽屉俯视，合上后回到室内 */
+  const phase: Phase = drawerOpen ? 'drawer' : base
+
+  const closeDrawer = () => {
+    setDrawerOpen(false)
+    setFolderOpen(false)
+  }
 
   /* 鸟瞰状态下点击画布任意处 → 开始推进。
    * 用捕获阶段监听：抢在 3D 物体的点击（选中/开卡片）之前触发，避免"进屋"时误开回忆卡片。 */
@@ -286,7 +427,7 @@ export default function RoomBackground({
       const t = e.target as HTMLElement | null
       if (!t || t.tagName !== 'CANVAS') return // 只认画布上的点击，UI 控件照常响应
       e.stopPropagation()
-      setPhase('entering')
+      setBase('entering')
     }
     window.addEventListener('click', onClick, true)
     return () => window.removeEventListener('click', onClick, true)
@@ -303,18 +444,39 @@ export default function RoomBackground({
       >
         <color attach="background" args={['#f4efe6']} />
         <WeatherLights weather={weather} />
-        <Room25DModel weather={weather} />
+        <Room25DModel
+          weather={weather}
+          drawerOpen={drawerOpen}
+          onDrawerToggle={() => (drawerOpen ? closeDrawer() : setDrawerOpen(true))}
+        />
         {children}
         <CinematicRig
           phase={phase}
           paused={cameraPaused}
-          onArrive={() => setPhase('indoor')}
+          onArrive={() => setBase('indoor')}
           onLookStart={() => setLooked(true)}
         />
       </Canvas>
+
+      {/* 抽屉拉开时：背景虚化 + 压暗四周，中间给抽屉留出清晰区域 */}
+      {phase === 'drawer' && <div style={BLUR_STYLE} />}
+
+      {/* 文件夹弹窗（居中，可点击打开） */}
+      {phase === 'drawer' && (
+        <div style={POPUP_WRAP_STYLE}>
+          <DrawerFolder
+            opened={folderOpen}
+            onOpen={() => setFolderOpen(true)}
+            onClose={closeDrawer}
+          />
+        </div>
+      )}
+
       {phase === 'overview' && <div style={HINT_STYLE}>点击进入房间</div>}
       {phase === 'indoor' && !looked && <div style={HINT_STYLE}>按住鼠标左键拖动转头</div>}
-      <style>{`@keyframes mr3d-hint-pulse { 0%,100% { opacity: .55 } 50% { opacity: 1 } }`}</style>
+      {phase === 'indoor' && !drawerOpen && <div style={DRAWER_HINT_STYLE}>点击书桌抽屉可以拉开</div>}
+      <style>{`@keyframes mr3d-hint-pulse { 0%,100% { opacity: .55 } 50% { opacity: 1 } }
+@keyframes mr3d-fade-in { from { opacity: 0 } to { opacity: 1 } }`}</style>
     </>
   )
 }

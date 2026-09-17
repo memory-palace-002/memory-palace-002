@@ -66,6 +66,17 @@ export const DESK_TOP_Y = 1.0 // 桌面顶面高度（摆放物品用）
 export const DESK_Z = BACK_Z + 0.55 // 桌面所在的 z
 export const DESK_L = 3.0
 
+/* 书桌右侧抽屉柜「最上面一格」——可拉出的那一格。
+ * RoomBackground 的抽屉俯视镜头由这几个数推导，改这里镜头会自动跟着走。 */
+export const DESK_DRAWER = {
+  x: DESK_L / 2 - 0.5, // 抽屉中心 x = 1.0
+  y: 0.66, // 抽屉中心高度（柜体上那两格的上格）
+  z: DESK_Z + 0.29, // 关闭时面板所在的 z = -2.16
+  w: 0.75,
+  h: 0.26,
+  travel: 0.34, // 完全拉出时向前移动的距离
+}
+
 /* ---------- 程序化贴图 ---------- */
 
 // 木纹：可传基色。地板用浅木，椅腿/柜框用琥珀木棕
@@ -733,7 +744,7 @@ function WindowWall({ skyMap, lightColor, lightIntensity }) {
 }
 
 /* ---------- 长桌：胡桃木桌面 + 奶油抽屉柜，左抽屉柱 + 右抽屉，中部留空 ---------- */
-function Desk({ woodMap }) {
+function Desk({ woodMap, drawerOpen = false, onDrawerToggle }) {
   const kneeL = -0.42 // 桌下留空区左界
   const kneeR = 0.42 // 桌下留空区右界（椅子位置）
   const drawerYs = [0.24, 0.5, 0.76]
@@ -769,18 +780,19 @@ function Desk({ woodMap }) {
         <boxGeometry args={[0.85, 0.94, 0.56]} />
         <meshPhysicalMaterial map={woodMap} roughness={0.5} clearcoat={0.22} clearcoatRoughness={0.45} />
       </mesh>
-      {[0.32, 0.66].map((y) => (
-        <group key={`r${y}`}>
-          <mesh position={[DESK_L / 2 - 0.5, y, DESK_Z + 0.29]}>
-            <boxGeometry args={[0.75, 0.26, 0.025]} />
-            <meshPhysicalMaterial map={woodMap} roughness={0.5} clearcoat={0.22} clearcoatRoughness={0.45} />
-          </mesh>
-          <mesh position={[DESK_L / 2 - 0.5, y, DESK_Z + 0.315]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.011, 0.011, 0.018, 12]} />
-            {knob}
-          </mesh>
-        </group>
-      ))}
+      {/* 下层：普通抽屉面（不动） */}
+      <group>
+        <mesh position={[DESK_L / 2 - 0.5, 0.32, DESK_Z + 0.29]}>
+          <boxGeometry args={[0.75, 0.26, 0.025]} />
+          <meshPhysicalMaterial map={woodMap} roughness={0.5} clearcoat={0.22} clearcoatRoughness={0.45} />
+        </mesh>
+        <mesh position={[DESK_L / 2 - 0.5, 0.32, DESK_Z + 0.315]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.011, 0.011, 0.018, 12]} />
+          {knob}
+        </mesh>
+      </group>
+      {/* 最上面一格：可拉出（开合由父级 drawerOpen 控制） */}
+      <PullOutDrawer woodMap={woodMap} open={drawerOpen} onToggle={onDrawerToggle} />
       {/* 桌面小台灯（最左端，其余桌面留白作为摆放区） */}
       <group position={[-DESK_L / 2 + 0.2, DESK_TOP_Y, DESK_Z - 0.16]}>
         <mesh castShadow>
@@ -1014,6 +1026,90 @@ function Rug() {
   )
 }
 
+/* ---------- 可拉出的抽屉（书桌右侧抽屉柜最上层） ----------
+ * 真实的抽屉 = 面板 + 盒体（底 + 左右 + 后，前面就是面板）+ 拉手，整体沿 +z 滑出。
+ * 柜体本身是实心块，所以额外放一块深色内腔背板：抽屉滑出后看到的是柜内阴影，
+ * 而不是穿帮看到柜体的实心面。
+ */
+function PullOutDrawer({ woodMap, open, onToggle }) {
+  const slider = useRef()
+  const t = useRef(0)
+  const { w, h, travel } = DESK_DRAWER
+  const s = 0.016 // 抽屉板厚
+  const D = 0.32 // 抽屉进深
+
+  useFrame((_, delta) => {
+    const g = slider.current
+    if (!g) return
+    const next = THREE.MathUtils.damp(t.current, open ? 1 : 0, 7, Math.min(delta, 0.05))
+    t.current = next
+    g.position.z = DESK_DRAWER.z + next * travel
+  })
+
+  const wood = (
+    <meshPhysicalMaterial map={woodMap} roughness={0.5} clearcoat={0.22} clearcoatRoughness={0.45} />
+  )
+  const inner = <meshStandardMaterial color="#e7d9bd" roughness={0.85} />
+
+  return (
+    <group>
+      {/* 柜内空腔背板（深色，抽屉拉出后露出来，模拟柜内阴影） */}
+      <mesh position={[DESK_DRAWER.x, DESK_DRAWER.y, DESK_DRAWER.z - 0.1]}>
+        <boxGeometry args={[w - 0.05, h - 0.03, 0.16]} />
+        <meshStandardMaterial color="#4b3826" roughness={1} />
+      </mesh>
+
+      {/* 抽屉本体：整体沿 z 滑出；点它任意一处都能开/关 */}
+      <group
+        ref={slider}
+        position={[DESK_DRAWER.x, DESK_DRAWER.y, DESK_DRAWER.z]}
+        onClick={(e) => {
+          e.stopPropagation()
+          onToggle?.()
+        }}
+        onPointerOver={(e) => {
+          e.stopPropagation()
+          document.body.style.cursor = 'pointer'
+        }}
+        onPointerOut={() => {
+          document.body.style.cursor = ''
+        }}
+      >
+        {/* 面板 */}
+        <mesh castShadow>{/* 居局部原点 */}
+          <boxGeometry args={[w, h, 0.025]} />
+          {wood}
+        </mesh>
+        {/* 拉手 */}
+        <mesh position={[0, 0, 0.025]} rotation={[Math.PI / 2, 0, 0]}>
+          <cylinderGeometry args={[0.011, 0.011, 0.018, 12]} />
+          <meshStandardMaterial color={GOLD_METAL} roughness={0.35} metalness={0.6} />
+        </mesh>
+        {/* 盒体：底 / 左 / 右 / 后（前面就是面板） */}
+        <mesh position={[0, -h / 2 + s / 2, -D / 2 - 0.0125]}>
+          <boxGeometry args={[w - 2 * s, s, D]} />
+          {inner}
+        </mesh>
+        {[-1, 1].map((sx) => (
+          <mesh key={sx} position={[sx * (w / 2 - s / 2), s / 2, -D / 2 - 0.0125]}>
+            <boxGeometry args={[s, h - s, D]} />
+            {inner}
+          </mesh>
+        ))}
+        <mesh position={[0, s / 2, -D - 0.0125 + s / 2]}>
+          <boxGeometry args={[w - 2 * s, h - s, s]} />
+          {inner}
+        </mesh>
+        {/* 里面躺着的文件夹（给俯视镜头一点内容，也是弹窗的 3D 呼应） */}
+        <mesh position={[0.04, -h / 2 + s + 0.008, -D / 2 - 0.02]} rotation={[0, 0.12, 0]}>
+          <boxGeometry args={[0.5, 0.016, 0.24]} />
+          <meshStandardMaterial color="#d9a55f" roughness={0.75} />
+        </mesh>
+      </group>
+    </group>
+  )
+}
+
 /* ---------- 布艺沙发（参考图：圆扶手 + 靠枕，放在房间左侧空位，朝向房间/镜头微倾） ---------- */
 function Sofa({ woodMap }) {
   /* 沙发身：哑光布面（米白偏淡黄），回到上一版质感 */
@@ -1158,7 +1254,7 @@ function WallFrames({ woodMap }) {
 }
 
 /* ---------- 房间整体（weather: 'sunny'|'cloudy'|'rain'|'snow'|''） ---------- */
-export function Room25DModel({ weather = '', ...props }) {
+export function Room25DModel({ weather = '', drawerOpen = false, onDrawerToggle, ...props }) {
   /* 木色（用户要求：书桌与地板颜色互换）——
    * 地板：中棕原木（原书桌色），家具/收边：深棕木（原地板色），椅腿仍为琥珀木 */
   const floorMap = useMemo(() => createWoodTexture([158, 102, 60], 'rgba(96,58,32,0.5)'), [])
@@ -1172,7 +1268,7 @@ export function Room25DModel({ weather = '', ...props }) {
       <WindowWall skyMap={skyMap} lightColor={W.light} lightIntensity={W.intensity} />
       <Sunlight weather={weather} />
       <Precipitation weather={weather} />
-      <Desk woodMap={walnutMap} />
+      <Desk woodMap={walnutMap} drawerOpen={drawerOpen} onDrawerToggle={onDrawerToggle} />
       <Chair woodMap={amberMap} />
       <Bookshelf />
       {/* 参考图新增：相框墙（右墙）+ 沙发区（左侧）+ 收边/圆毯 */}
