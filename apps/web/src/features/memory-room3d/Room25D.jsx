@@ -832,19 +832,46 @@ function Chair({ woodMap }) {
   )
 }
 
-/* ---------- 右侧书柜：浅暖米色柜体（降棕，保持温馨）+ 暖光灯带 + 彩色薄书 ---------- */
+/* ---------- 右侧书柜：浅粉奶油木柜体 + 暖光灯带 + 底部双抽（空腔填满） ----------
+ * ⚠️ 装饰书的位置需与 ItemPlacement 的 SHELF_BUILTIN 保持一致：那边按这些 x 区间避让，
+ *    否则用户放上去的书会和这里的装饰书重合穿模。
+ */
 function Bookshelf() {
   const W = 1.15
   const H = 2.55
   const D = 0.3
   const cx = ROOM_W / 2 - W / 2 - 0.35
   const shelfYs = [0.55, 1.05, 1.55, 2.05]
+  const boardT = 0.035
+  /* 柜内自带的装饰书：贴左侧竖放，底面严格落在层板顶面上（不再陷进层板）
+   * row = 第几层（0 为最底层），x = 书脊中心（柜体局部坐标），h = 书高 */
   const books = [
-    [-0.42, 0.55], [-0.34, 0.6], [-0.22, 0.55], [0.1, 1.05], [0.2, 0.62],
+    { row: 0, x: -0.44, h: 0.22, c: '#e8c8c8', tilt: 0 },
+    { row: 0, x: -0.385, h: 0.235, c: '#c8d8c0', tilt: 0.05 },
+    { row: 0, x: -0.33, h: 0.205, c: '#d8c8e8', tilt: 0 },
+    { row: 1, x: -0.44, h: 0.21, c: '#f0e0c0', tilt: 0 },
+    { row: 1, x: -0.385, h: 0.225, c: '#c0d0e0', tilt: -0.04 },
   ]
-  const bookColors = ['#e8c8c8', '#c8d8c0', '#d8c8e8', '#f0e0c0', '#c0d0e0']
   /* 柜体：浅粉奶油木（参考图书柜的暖粉调），轻微漆面光泽 */
   const shell = <meshPhysicalMaterial color="#eac8b6" roughness={0.6} clearcoat={0.25} clearcoatRoughness={0.4} />
+  /* ---------- 底部抽屉区 ----------
+   * 底座顶面 0.06 → 第一层层板底面 0.5325，整个空腔用「两个抽屉 + 横档」填满，不留空缺：
+   *   抽屉1  0.065 ~ 0.285   抽屉2  0.2975 ~ 0.5175
+   *   中横档 0.285 ~ 0.2975  上封档 0.5175 ~ 0.5325
+   */
+  const baseTop = 0.06
+  const cavityTop = shelfYs[0] - boardT / 2
+  const drawerH = 0.22
+  const gap = 0.0125
+  const y0 = baseTop + 0.005
+  const y1 = y0 + drawerH
+  const y2 = y1 + gap
+  const y3 = y2 + drawerH
+  const drawerYs = [y0 + drawerH / 2, y2 + drawerH / 2]
+  const rails = [
+    [(y1 + y2) / 2, gap], // 两抽屉之间的中横档
+    [(y3 + cavityTop) / 2, cavityTop - y3], // 顶部封档
+  ]
   return (
     <group position={[cx, 0, BACK_Z + D / 2 + 0.03]}>
       {/* 背板 / 顶底 / 侧板（背板略浅一档，衬托彩色书脊） */}
@@ -866,11 +893,11 @@ function Bookshelf() {
           {shell}
         </mesh>
       ))}
-      {/* 层板 + 灯带 + 书 */}
+      {/* 层板 + 灯带 */}
       {shelfYs.map((y) => (
         <group key={y}>
           <mesh position={[0, y, 0]} castShadow receiveShadow>
-            <boxGeometry args={[W - 0.06, 0.035, D - 0.04]} />
+            <boxGeometry args={[W - 0.06, boardT, D - 0.04]} />
             {shell}
           </mesh>
           <mesh position={[0, y - 0.024, D / 2 - 0.08]}>
@@ -879,25 +906,48 @@ function Bookshelf() {
           </mesh>
         </group>
       ))}
-      {books.map(([x, y], i) => (
-        <mesh key={i} position={[x, y + 0.1, 0.02]} rotation={[0, 0, i % 2 ? 0.08 : 0]} castShadow>
-          <boxGeometry args={[0.05, 0.22, 0.16]} />
-          <meshStandardMaterial color={bookColors[i % bookColors.length]} roughness={0.85} />
+      {/* 自带装饰书：底面落在层板顶面（shelfY + boardT/2）上，不穿模 */}
+      {books.map((b, i) => (
+        <mesh
+          key={i}
+          position={[b.x, shelfYs[b.row] + boardT / 2 + b.h / 2, 0.02]}
+          rotation={[0, 0, b.tilt]}
+          castShadow
+          receiveShadow
+        >
+          <boxGeometry args={[0.05, b.h, 0.16]} />
+          <meshStandardMaterial color={b.c} roughness={0.85} />
         </mesh>
       ))}
       <pointLight position={[0, 1.6, 0.1]} color="#ffd9a0" intensity={1.2} distance={1.6} decay={1.6} />
-      {/* 底部抽屉 */}
-      {[0.14, 0.36].map((y) => (
-        <group key={`d${y}`}>
-          <mesh position={[0, y, D / 2 - 0.005]}>
-            <boxGeometry args={[W - 0.1, 0.18, 0.02]} />
+      {/* 底部抽屉区：先垫一层内腔背板（深色，就算有缝也只看到阴影，不会看穿到墙） */}
+      <mesh position={[0, (baseTop + cavityTop) / 2, -D / 2 + 0.055]}>
+        <boxGeometry args={[W - 0.1, cavityTop - baseTop - 0.01, 0.02]} />
+        <meshStandardMaterial color="#d3bda9" roughness={0.95} />
+      </mesh>
+      {/* 两个抽屉：箱体（略缩进）+ 面板 + 金色圆拉手 */}
+      {drawerYs.map((y) => (
+        <group key={`drawer${y}`}>
+          <mesh position={[0, y, -0.03]} castShadow>
+            <boxGeometry args={[W - 0.12, drawerH - 0.02, D - 0.1]} />
+            <meshStandardMaterial color="#dfbba9" roughness={0.8} />
+          </mesh>
+          <mesh position={[0, y, D / 2 - 0.014]} castShadow receiveShadow>
+            <boxGeometry args={[W - 0.055, drawerH, 0.028]} />
             {shell}
           </mesh>
-          <mesh position={[0, y, D / 2 + 0.012]} rotation={[Math.PI / 2, 0, 0]}>
-            <cylinderGeometry args={[0.011, 0.011, 0.016, 12]} />
+          <mesh position={[0, y, D / 2 + 0.008]} rotation={[Math.PI / 2, 0, 0]}>
+            <cylinderGeometry args={[0.012, 0.012, 0.018, 12]} />
             <meshStandardMaterial color={GOLD_METAL} roughness={0.35} metalness={0.6} />
           </mesh>
         </group>
+      ))}
+      {/* 横档：把抽屉之间、抽屉与层板之间的空隙填满 */}
+      {rails.map(([y, h], i) => (
+        <mesh key={`rail${i}`} position={[0, y, D / 2 - 0.03]}>
+          <boxGeometry args={[W - 0.07, h, D - 0.06]} />
+          {shell}
+        </mesh>
       ))}
     </group>
   )
@@ -1109,10 +1159,10 @@ function WallFrames({ woodMap }) {
 
 /* ---------- 房间整体（weather: 'sunny'|'cloudy'|'rain'|'snow'|''） ---------- */
 export function Room25DModel({ weather = '', ...props }) {
-  /* 参考 Clipboard_Screenshot（微缩房间）三种木色：深棕拼木地板 / 中棕木书桌与收边 / 琥珀木椅腿 */
-  const floorMap = useMemo(() => createWoodTexture([104, 62, 42], 'rgba(45,24,14,0.6)'), [])
-  /* 书桌/相框/收边：中棕木（参考图书桌色），保留木纹与光泽 */
-  const walnutMap = useMemo(() => createWoodTexture([158, 102, 60], 'rgba(90,50,25,0.45)'), [])
+  /* 木色（用户要求：书桌与地板颜色互换）——
+   * 地板：中棕原木（原书桌色），家具/收边：深棕木（原地板色），椅腿仍为琥珀木 */
+  const floorMap = useMemo(() => createWoodTexture([158, 102, 60], 'rgba(96,58,32,0.5)'), [])
+  const walnutMap = useMemo(() => createWoodTexture([104, 62, 42], 'rgba(45,24,14,0.6)'), [])
   const amberMap = useMemo(() => createWoodTexture([196, 152, 96], 'rgba(110,80,45,0.4)'), [])
   const W = WEATHER[weather] || WEATHER_DEFAULT
   const skyMap = useMemo(() => createSkyTexture(W.sky, W.cloud, W.sun), [W])
