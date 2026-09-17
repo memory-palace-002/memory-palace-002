@@ -194,7 +194,8 @@ function computeShelfLayout(items: InvItem[]): Map<string, { x: number; y: numbe
     for (const r of rows) {
       const spot = placeInRow(r, occupied[r], b.x, width)
       if (!spot) continue
-      occupied[r].push(spot.span)
+      /* 占位区间外扩半条缝，让相邻的书（以及柜内原有装饰书）之间始终留出可见缝隙 */
+      occupied[r].push([spot.span[0] - BOOK_GAP / 2, spot.span[1] + BOOK_GAP / 2])
       occupied[r].sort((p, q) => p[0] - q[0])
       result.set(b.id, {
         x: spot.x,
