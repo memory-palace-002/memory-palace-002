@@ -409,15 +409,13 @@ export default function RoomBackground({
 }) {
   const [base, setBase] = useState<Phase>('overview') // 鸟瞰 / 推进中 / 室内
   const [drawerOpen, setDrawerOpen] = useState(false) // 抽屉是否拉出
-  const [folderOpen, setFolderOpen] = useState(false) // 文件夹弹窗是否展开
   const [looked, setLooked] = useState(false) // 用户是否已经拖动转过头
   /* 抽屉拉出时镜头切到抽屉俯视，合上后回到室内 */
   const phase: Phase = drawerOpen ? 'drawer' : base
 
-  const closeDrawer = () => {
-    setDrawerOpen(false)
-    setFolderOpen(false)
-  }
+  /* 文件夹弹窗的三段式状态（闭合/扇形/手账页）由 DrawerFolder 内部管理，
+   * 这里只负责把整个抽屉连同弹窗一起收起。 */
+  const closeDrawer = () => setDrawerOpen(false)
 
   /* 鸟瞰状态下点击画布任意处 → 开始推进。
    * 用捕获阶段监听：抢在 3D 物体的点击（选中/开卡片）之前触发，避免"进屋"时误开回忆卡片。 */
@@ -461,14 +459,10 @@ export default function RoomBackground({
       {/* 抽屉拉开时：背景虚化 + 压暗四周，中间给抽屉留出清晰区域 */}
       {phase === 'drawer' && <div style={BLUR_STYLE} />}
 
-      {/* 文件夹弹窗（居中，可点击打开） */}
+      {/* 文件夹手账弹窗（三段式：闭合文件夹 → 扇形纸张 → 手账页面） */}
       {phase === 'drawer' && (
         <div style={POPUP_WRAP_STYLE}>
-          <DrawerFolder
-            opened={folderOpen}
-            onOpen={() => setFolderOpen(true)}
-            onClose={closeDrawer}
-          />
+          <DrawerFolder onClose={closeDrawer} />
         </div>
       )}
 

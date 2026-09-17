@@ -1,0 +1,555 @@
+/* ============================================================
+   DrawerFolder —— 抽屉手账弹窗样式
+   全部类名 jc- 前缀，避免污染全局样式
+   ============================================================ */
+
+/* 三个阶段叠放在同一格（grid 技巧），用透明度 + 变换交叉过渡，切换丝滑 */
+.jc-root {
+  display: grid;
+  place-items: center;
+}
+
+.jc-grid {
+  grid-area: 1 / 1;
+  transition: opacity 0.24s ease, transform 0.3s cubic-bezier(0.22, 0.9, 0.32, 1);
+}
+
+.jc-folder-wrap.jc-hide {
+  opacity: 0;
+  transform: translateY(28px) scale(0.92);
+  pointer-events: none;
+}
+
+.jc-sheet-wrap.jc-hide {
+  opacity: 0;
+  transform: scale(0.93);
+  pointer-events: none;
+}
+
+/* ---------------- ① 闭合 / ② 扇形：文件夹 ---------------- */
+.jc-folder {
+  position: relative;
+  width: 220px;
+  height: 176px;
+  cursor: pointer;
+  transition: transform 0.25s ease;
+  filter: drop-shadow(0 20px 30px rgba(40, 28, 16, 0.45));
+  outline: none;
+}
+
+.jc-folder:hover {
+  transform: translateY(-8px);
+}
+
+.jc-folder:focus-visible {
+  outline: 2px solid rgba(255, 250, 240, 0.9);
+  outline-offset: 6px;
+  border-radius: 14px;
+}
+
+/* 文件夹背板（颜色 = 琥珀主色加深 8%，与房间里的文件夹同色系） */
+.jc-folder__back {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: #c79757;
+  border-radius: 0 20px 20px 20px;
+}
+
+.jc-folder__back::after {
+  content: '';
+  position: absolute;
+  z-index: 0;
+  bottom: 98%;
+  left: 0;
+  width: 64px;
+  height: 20px;
+  background: #c79757;
+  border-radius: 10px 10px 0 0;
+}
+
+/* 夹在文件夹里的三张纸（闭合时被封口盖住，悬停/展开时露出） */
+.jc-paper {
+  position: absolute;
+  z-index: 2;
+  bottom: 10%;
+  left: 50%;
+  transform: translate(-50%, 10%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 70%;
+  height: 80%;
+  background: #f3e7cd;
+  border-radius: 14px;
+  color: #7a6647;
+  box-shadow: 0 8px 18px rgba(60, 42, 20, 0.18);
+  transition: transform 0.38s cubic-bezier(0.34, 1.25, 0.4, 1), box-shadow 0.3s ease;
+}
+
+.jc-paper-2 {
+  background: #f6ecd6;
+  width: 80%;
+  height: 70%;
+}
+
+.jc-paper-3 {
+  background: #fdf6e8;
+  width: 90%;
+  height: 60%;
+}
+
+.jc-paper-emoji {
+  font-size: 26px;
+}
+
+.jc-paper-title {
+  font-family: 'Kaiti SC', 'STKaiti', 'KaiTi', '楷体', serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+/* 闭合态悬停：封口向两侧张开、纸张探头 */
+.jc-folder:not(.jc-fan):hover .jc-paper {
+  transform: translate(-50%, 0%);
+}
+
+.jc-folder:not(.jc-fan):hover .jc-folder__front {
+  transform: skew(15deg) scaleY(0.6);
+}
+
+.jc-folder:not(.jc-fan):hover .jc-right {
+  transform: skew(-15deg) scaleY(0.6);
+}
+
+/* 展开态：三张纸扇形铺开 + 鼠标磁吸跟随（--mx/--my 由组件写入） */
+.jc-folder.jc-fan {
+  transform: translateY(-8px);
+}
+
+.jc-folder.jc-fan .jc-paper {
+  cursor: pointer;
+}
+
+.jc-folder.jc-fan .jc-paper-1 {
+  transform: translate(calc(-120% + var(--mx, 0px)), calc(-70% + var(--my, 0px))) rotateZ(-15deg) scale(1.35);
+}
+
+.jc-folder.jc-fan .jc-paper-1:hover {
+  transform: translate(calc(-120% + var(--mx, 0px)), calc(-70% + var(--my, 0px))) rotateZ(-15deg) scale(1.5);
+  box-shadow: 0 16px 30px rgba(60, 42, 20, 0.3);
+}
+
+.jc-folder.jc-fan .jc-paper-2 {
+  transform: translate(calc(10% + var(--mx, 0px)), calc(-70% + var(--my, 0px))) rotateZ(15deg) scale(1.35);
+}
+
+.jc-folder.jc-fan .jc-paper-2:hover {
+  transform: translate(calc(10% + var(--mx, 0px)), calc(-70% + var(--my, 0px))) rotateZ(15deg) scale(1.5);
+  box-shadow: 0 16px 30px rgba(60, 42, 20, 0.3);
+}
+
+.jc-folder.jc-fan .jc-paper-3 {
+  transform: translate(calc(-50% + var(--mx, 0px)), calc(-100% + var(--my, 0px))) rotateZ(5deg) scale(1.35);
+}
+
+.jc-folder.jc-fan .jc-paper-3:hover {
+  transform: translate(calc(-50% + var(--mx, 0px)), calc(-100% + var(--my, 0px))) rotateZ(5deg) scale(1.5);
+  box-shadow: 0 16px 30px rgba(60, 42, 20, 0.3);
+}
+
+.jc-folder.jc-fan .jc-folder__front {
+  transform: skew(15deg) scaleY(0.6);
+}
+
+.jc-folder.jc-fan .jc-right {
+  transform: skew(-15deg) scaleY(0.6);
+}
+
+/* 文件夹封口（左右两片，悬停/展开时向两侧 skew 张开） */
+.jc-folder__front {
+  position: absolute;
+  z-index: 3;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(165deg, #e3b473 0%, #d9a55f 55%, #cb9750 100%);
+  border-radius: 10px 20px 20px 20px;
+  transform-origin: bottom;
+  transition: transform 0.3s ease-in-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: #4a3418;
+}
+
+.jc-folder__front.jc-right {
+  background: linear-gradient(195deg, #e3b473 0%, #d9a55f 55%, #cb9750 100%);
+}
+
+.jc-front-name {
+  font-family: 'Kaiti SC', 'STKaiti', 'KaiTi', '楷体', serif;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 4px;
+}
+
+.jc-front-sub {
+  font-size: 11px;
+  letter-spacing: 2px;
+  opacity: 0.68;
+}
+
+/* 文件夹下方的小提示 */
+.jc-folder-caption {
+  position: absolute;
+  left: 50%;
+  bottom: -44px;
+  transform: translateX(-50%);
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: rgba(61, 52, 40, 0.45);
+  color: #fffaf0;
+  font-size: 12px;
+  letter-spacing: 2px;
+  white-space: nowrap;
+  pointer-events: none;
+  backdrop-filter: blur(4px);
+}
+
+/* 收起抽屉的 ✕ 按钮（文件夹右上角） */
+.jc-close-x {
+  position: absolute;
+  top: -14px;
+  right: -14px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 2px solid rgba(255, 250, 240, 0.85);
+  border-radius: 50%;
+  background: #b98543;
+  color: #fffaf0;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 5;
+  transition: transform 0.22s ease, background 0.22s ease;
+}
+
+.jc-close-x:hover {
+  transform: rotate(90deg);
+  background: #a5743a;
+}
+
+/* ---------------- ③ 手账页面 ---------------- */
+.jc-sheet {
+  position: relative;
+  width: min(520px, 88vw);
+  height: min(640px, 62vh);
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(170deg, #fffdf5 0%, #fdf6e8 60%, #f8eeda 100%);
+  border-radius: 10px;
+  box-shadow: 0 30px 60px rgba(40, 28, 16, 0.5);
+}
+
+.jc-sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px 10px 16px;
+  border-bottom: 1px dashed rgba(150, 118, 74, 0.35);
+}
+
+.jc-sheet-title {
+  flex: 1;
+  text-align: center;
+  font-family: 'Kaiti SC', 'STKaiti', 'KaiTi', '楷体', serif;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: #5b4a33;
+}
+
+.jc-back {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(217, 165, 95, 0.22);
+  color: #7a5c2e;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.jc-back:hover {
+  background: rgba(217, 165, 95, 0.4);
+  transform: translateX(-2px);
+}
+
+/* 页头里的 ✕（复用 jc-close-x，但改为文档流内的小圆钮） */
+.jc-close-head {
+  position: static;
+  top: auto;
+  right: auto;
+  width: 28px;
+  height: 28px;
+  font-size: 12px;
+}
+
+/* 稿纸区：米色横线 + 左侧红色装订线 */
+.jc-body {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+  cursor: text;
+  font-family: 'Kaiti SC', 'STKaiti', 'KaiTi', '楷体', serif;
+  background-image:
+    repeating-linear-gradient(to bottom, transparent 0, transparent 33px, rgba(150, 118, 74, 0.3) 33px, rgba(150, 118, 74, 0.3) 34px),
+    linear-gradient(to right, transparent 0, transparent 40px, rgba(196, 110, 84, 0.5) 40px, rgba(196, 110, 84, 0.5) 41px, transparent 41px);
+}
+
+/* 正文与输入框必须完全同参，保证写字正好压在横线上 */
+.jc-text,
+.jc-textarea {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 12px 18px 16px 50px;
+  line-height: 34px;
+  font-size: 17px;
+  letter-spacing: 1px;
+  color: #5b4a33;
+  font-family: inherit;
+}
+
+.jc-text {
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.jc-textarea {
+  z-index: 2;
+  border: none;
+  outline: none;
+  resize: none;
+  background: transparent;
+  user-select: text;
+}
+
+.jc-textarea::placeholder {
+  color: rgba(122, 102, 71, 0.4);
+}
+
+/* 空白稿纸左上角的提示 */
+.jc-empty-hint {
+  position: absolute;
+  left: 52px;
+  top: 14px;
+  color: rgba(122, 102, 71, 0.5);
+  font-size: 15px;
+  letter-spacing: 3px;
+  pointer-events: none;
+  animation: jc-hint-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes jc-hint-pulse {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+/* ---------------- 贴上去的图片 / 贴纸 ---------------- */
+.jc-item {
+  position: absolute;
+  z-index: 3;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+}
+
+.jc-item:active {
+  cursor: grabbing;
+  z-index: 9;
+}
+
+.jc-item-emoji span {
+  display: block;
+  line-height: 1;
+  text-shadow: 0 3px 6px rgba(80, 60, 30, 0.2);
+  filter: drop-shadow(0 2px 3px rgba(80, 60, 30, 0.15));
+}
+
+/* 图片做成拍立得相片的感觉 */
+.jc-item-img {
+  padding: 5px 5px 16px;
+  background: #fff;
+  border-radius: 3px;
+  box-shadow: 0 8px 18px rgba(80, 60, 30, 0.3);
+}
+
+.jc-item-img img {
+  display: block;
+  border-radius: 2px;
+}
+
+/* 悬停出现的 ✕ 删除角标 */
+.jc-item-del {
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  background: #c0564a;
+  color: #fff;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  z-index: 4;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.jc-item:hover .jc-item-del {
+  opacity: 1;
+}
+
+.jc-item-del:hover {
+  transform: scale(1.15);
+}
+
+/* ---------------- 纸右边的圆形「＋」悬浮按钮 ---------------- */
+.jc-add-btn {
+  position: absolute;
+  right: -26px;
+  top: 40%;
+  width: 54px;
+  height: 54px;
+  padding: 0;
+  border: 3px solid rgba(255, 250, 240, 0.9);
+  border-radius: 50%;
+  background: linear-gradient(160deg, #e3b473, #c9984f);
+  color: #fffaf0;
+  font-size: 24px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 7;
+  box-shadow: 0 12px 24px rgba(120, 80, 30, 0.4);
+  transition: transform 0.28s cubic-bezier(0.34, 1.4, 0.4, 1), box-shadow 0.28s ease;
+}
+
+.jc-add-btn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 16px 30px rgba(120, 80, 30, 0.5);
+}
+
+/* 打开菜单时 ＋ 旋转成 ✕ */
+.jc-add-btn.jc-add-open {
+  transform: rotate(45deg);
+}
+
+.jc-add-btn.jc-add-open:hover {
+  transform: rotate(45deg) scale(1.08);
+}
+
+/* ＋ 展开的小菜单（向左弹出） */
+.jc-add-menu {
+  position: absolute;
+  right: 42px;
+  top: calc(40% - 6px);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 8;
+  transform-origin: right center;
+  transition: opacity 0.2s ease, transform 0.26s cubic-bezier(0.22, 1.2, 0.36, 1);
+}
+
+.jc-add-menu button {
+  padding: 9px 16px;
+  border: none;
+  border-radius: 999px;
+  background: #fffdf5;
+  color: #6b563c;
+  font-size: 13px;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow: 0 8px 18px rgba(60, 42, 20, 0.25);
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.jc-add-menu button:hover {
+  background: #f7ead2;
+  transform: translateX(-3px);
+}
+
+.jc-add-menu.jc-hide {
+  opacity: 0;
+  transform: translateX(10px) scale(0.85);
+  pointer-events: none;
+}
+
+/* 贴纸面板 */
+.jc-stickers {
+  position: absolute;
+  right: 42px;
+  top: calc(40% - 6px);
+  width: 232px;
+  max-height: 52vh;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 4px;
+  padding: 10px;
+  background: #fffdf5;
+  border-radius: 14px;
+  box-shadow: 0 14px 30px rgba(60, 42, 20, 0.3);
+  z-index: 8;
+  transform-origin: right center;
+  transition: opacity 0.2s ease, transform 0.26s cubic-bezier(0.22, 1.2, 0.36, 1);
+}
+
+.jc-stickers button {
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.jc-stickers button:hover {
+  background: #f7ead2;
+  transform: scale(1.15);
+}
+
+.jc-stickers.jc-hide {
+  opacity: 0;
+  transform: translateX(10px) scale(0.85);
+  pointer-events: none;
+}
+
+/* 隐藏的文件选择框（点「添加图片」时程序化触发） */
+.jc-file {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
