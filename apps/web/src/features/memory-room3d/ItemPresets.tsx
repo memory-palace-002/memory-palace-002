@@ -16,13 +16,14 @@ export interface PresetDef {
   icon: string
   aspect: number // 贴面区宽高比（w/h）
   shadowR: number // 底部软影子半径
+  full?: boolean // 满幅贴面：图片 cover 裁剪后铺满整个贴面区（无边框），书本封面用
 }
 
 export const PRESETS: PresetDef[] = [
   { id: 'mug', label: '马克杯', icon: '🥛', aspect: 1.15, shadowR: 0.09 },
   { id: 'frame', label: '相框', icon: '🖼️', aspect: 1.33, shadowR: 0.15 },
   { id: 'plant', label: '小盆栽', icon: '🪴', aspect: 1.25, shadowR: 0.09 },
-  { id: 'book', label: '一本书', icon: '📕', aspect: 0.78, shadowR: 0.12 },
+  { id: 'book', label: '一本书', icon: '📕', aspect: 0.714, shadowR: 0.12, full: true }, // 0.2/0.28 = 封面满幅
 ]
 
 export const getPreset = (id: string) => PRESETS.find((p) => p.id === id) || PRESETS[0]
@@ -192,10 +193,10 @@ function BookModel({ tex }: { tex: THREE.Texture | null }) {
         <boxGeometry args={[W + 0.008, H + 0.008, 0.006]} />
         <meshStandardMaterial color="#cf9a4e" roughness={0.7} />
       </mesh>
-      {/* 封面贴面（用户图片 → 封面） */}
+      {/* 封面贴面（用户图片 → 铺满整个封面，cover 裁剪到书本比例） */}
       {tex && (
-        <mesh position={[0.002, H / 2, D / 2 + 0.006]}>
-          <planeGeometry args={[W - 0.05, (W - 0.05) / 0.78]} />
+        <mesh position={[0, H / 2, D / 2 + 0.0056]}>
+          <planeGeometry args={[W + 0.008, H + 0.008]} />
           <meshBasicMaterial map={tex} toneMapped={false} />
         </mesh>
       )}

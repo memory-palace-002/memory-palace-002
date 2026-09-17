@@ -229,18 +229,25 @@ function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w:
  * cover 裁剪到目标比例 → 圆角 → 暖米色边框（像印在杯身/封面上的贴片）→ 轻微暖色调和
  * 这样贴到预设模型上不会出现生硬的方图穿帮。
  * @param aspect 贴面区宽高比（w/h）
+ * @param opts.full 满幅模式：不要米色边框，图片 cover 裁剪后铺满整个贴面区
+ *                  （书本封面用——照片就是封面本身，按书本尺寸自动裁剪）
  */
-export function stylizeDecal(source: string, aspect = 1.3): Promise<{ dataUrl: string; width: number; height: number }> {
+export function stylizeDecal(
+  source: string,
+  aspect = 1.3,
+  opts?: { full?: boolean }
+): Promise<{ dataUrl: string; width: number; height: number }> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.onload = () => {
       try {
         const outW = 640
-        const pad = Math.round(outW * 0.045) // 米色边框宽
+        const full = !!opts?.full
+        const pad = full ? 0 : Math.round(outW * 0.045) // 米色边框宽（满幅模式无边框）
         const innerW = outW - pad * 2
         const innerH = Math.round(innerW / aspect)
         const outH = innerH + pad * 2
-        const radius = Math.round(outW * 0.055)
+        const radius = full ? Math.round(outW * 0.012) : Math.round(outW * 0.055)
 
         const canvas = document.createElement('canvas')
         canvas.width = outW
@@ -248,13 +255,20 @@ export function stylizeDecal(source: string, aspect = 1.3): Promise<{ dataUrl: s
         const ctx = canvas.getContext('2d')
         if (!ctx) throw new Error('浏览器不支持 Canvas')
 
-        /* 1. 米色底框（圆角，带极淡描边，模拟陶瓷/封面印刷边缘） */
-        roundedRectPath(ctx, 0, 0, outW, outH, radius)
-        ctx.fillStyle = '#f4edde'
-        ctx.fill()
-        ctx.strokeStyle = 'rgba(150,120,80,0.28)'
-        ctx.lineWidth = 3
-        ctx.stroke()
+        /* 1. 米色底框（圆角，带极淡描边，模拟陶瓷/封面印刷边缘）；满幅模式跳过 */
+        if (!full) {
+          roundedRectPath(ctx, 0, 0, outW, outH, radius)
+          ctx.fillStyle = '#f4edde'
+          ctx.fill()
+          ctx.strokeStyle = 'rgba(150,120,80,0.28)'
+          ctx.lineWidth = 3
+          ctx.stroke()
+        } else {
+          /* 满幅：铺一层暖米色底，防止透明图露黑 */
+          roundedRectPath(ctx, 0, 0, outW, outH, radius)
+          ctx.fillStyle = '#f4edde'
+          ctx.fill()
+        }
 
         /* 2. 内圆角裁剪，cover 方式画入图片（色调轻微调和，贴上后不突兀） */
         const iw = img.naturalWidth

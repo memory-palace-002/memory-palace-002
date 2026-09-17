@@ -64,16 +64,47 @@ interface InvItem {
   y: number // 底部高度（物品默认站在桌面）
   z: number
   rotY: number
+  scale?: number // 缩放（按住左键拖动时滚轮调整；1 = 原始大小）
   decal: string | null // 风格化后的贴面 dataURL（null = 用预设默认贴面）
   meta: StickerMeta | null
 }
 
 function loadItems(): InvItem[] {
   try {
-    return JSON.parse(localStorage.getItem(ITEMS_KEY) || '[]') as InvItem[]
+    const list = JSON.parse(localStorage.getItem(ITEMS_KEY) || '[]') as InvItem[]
+    /* 老数据没有 scale，补默认值 */
+    return list.map((i) => ({ ...i, scale: typeof i.scale === 'number' ? i.scale : 1 }))
   } catch {
     return []
   }
+}
+
+/* ---------- 书柜吸附（书本放进书柜要竖着放，符合生活规律） ----------
+ * 数值来自 Room25D.jsx 的 Bookshelf（只读参考，不修改背景文件）：
+ * ROOM_W=6, BACK_Z=-3, 书柜宽 1.15 深 0.3，中心 cx = 3 - 1.15/2 - 0.35 = 2.075
+ * 层板顶面 = shelfY + 0.0175；书竖放 = rotation.y = π/2（书脊朝观众）
+ */
+const SHELF = {
+  cx: 2.075,
+  halfX: 0.45, // x 吸附范围
+  ys: [0.55, 1.05, 1.55, 2.05], // 层板高度
+  top: 0.0175, // 层板半厚（顶面偏移）
+  zCenter: -3 + 0.15, // 书柜体中心 z（BACK_Z + D/2）
+  zRange: [-2.95, -2.5] as [number, number], // z 落在此区间才算「放进书柜」
+  yRange: [0.35, 2.3] as [number, number],
+}
+
+/** 书本是否在书柜区域内；是则返回竖放吸附位（y 落到最近层板顶面） */
+function bookShelfPose(item: InvItem): { y: number; rotY: number; z: number } | null {
+  if (item.preset !== 'book') return null
+  if (Math.abs(item.x - SHELF.cx) > SHELF.halfX) return null
+  if (item.z < SHELF.zRange[0] || item.z > SHELF.zRange[1]) return null
+  if (item.y < SHELF.yRange[0] || item.y > SHELF.yRange[1]) return null
+  let best = SHELF.ys[0]
+  for (const y of SHELF.ys) {
+    if (Math.abs(y + SHELF.top - item.y) < Math.abs(best + SHELF.top - item.y)) best = y
+  }
+  return { y: best + SHELF.top, rotY: Math.PI / 2, z: SHELF.zCenter }
 }
 
 /* 物品出生点：桌面留白区（避开左端台灯） */
@@ -309,22 +340,31 @@ function InvItemView({
   onPick,
   onDragActive,
   onMove,
+  onScale,
 }: {
   item: InvItem
   picked: boolean
   onPick: (id: string) => void
   onDragActive: (active: boolean) => void
   onMove: (p: { x: number; y: number; z: number }) => void
+  onScale: (id: string, scale: number) => void
 }) {
   const group = useRef<THREE.Group>(null)
   const [hovered, setHovered] = useState(false)
   const hoveredRef = useRef(false)
   const drag = useRef<{ mode: 'v' | 'h'; plane: THREE.Plane; offset: THREE.Vector3 } | null>(null)
   const movedRef = useRef(false)
+  const wheelRef = useRef<((e: WheelEvent) => void) | null>(null) // 拖动期间的滚轮缩放
+  const scaleRef = useRef(item.scale || 1)
+
+  useEffect(() => {
+    scaleRef.current = item.scale || 1
+  }, [item.scale])
 
   useFrame(() => {
     if (!group.current) return
-    const target = hovered || picked ? 1.08 : 1
+    /* 悬停/选中的放大倍率 × 用户缩放 */
+    const target = (hovered || picked ? 1.08 : 1) * scaleRef.current
     const cur = group.current.scale.x
     const next = THREE.MathUtils.lerp(cur, target, 0.18)
     group.current.scale.setScalar(next)
@@ -332,10 +372,17 @@ function InvItemView({
 
   const def = getPreset(item.preset)
 
-  /* 影子：桌面范围内落桌面，否则落地板 */
-  const overDesk = Math.abs(item.x) <= DESK_L / 2 + 0.15 && Math.abs(item.z - DESK_Z) <= 0.4
-  const shadowY = overDesk && item.y >= DESK_TOP_Y - 0.001 ? DESK_TOP_Y : 0.012
-  const shadowOp = clamp(0.22 / (1 + Math.max(0, item.y - shadowY) * 1.6), 0.05, 0.22)
+  /* 书柜吸附：书本进入书柜区域 → 竖着放到最近层板上 */
+  const shelfPose = bookShelfPose(item)
+  /* 显示姿态 = 吸附位（在书柜里）或原始位置 */
+  const pose = shelfPose
+    ? { x: item.x, y: shelfPose.y, z: shelfPose.z, rotY: shelfPose.rotY }
+    : { x: item.x, y: item.y, z: item.z, rotY: item.rotY }
+
+  /* 影子：桌面范围内落桌面，否则落地板（书柜里的书影子落在层板上） */
+  const overDesk = Math.abs(pose.x) <= DESK_L / 2 + 0.15 && Math.abs(pose.z - DESK_Z) <= 0.4
+  const shadowY = shelfPose ? pose.y : overDesk && pose.y >= DESK_TOP_Y - 0.001 ? DESK_TOP_Y : 0.012
+  const shadowOp = clamp(0.22 / (1 + Math.max(0, pose.y - shadowY) * 1.6), 0.05, 0.22)
 
   const setCursor = (c: string) => {
     document.body.style.cursor = c
@@ -359,6 +406,17 @@ function InvItemView({
     if (!e.ray.intersectPlane(plane, hit)) return
     drag.current = { mode, plane, offset: wp.clone().sub(hit) }
     movedRef.current = false
+    /* 按住左键拖动期间：滚轮缩放物品（上滚放大 / 下滚缩小，0.4x ~ 2.5x） */
+    const onWheel = (e2: WheelEvent) => {
+      e2.preventDefault()
+      const f = e2.deltaY < 0 ? 1.08 : 1 / 1.08
+      const nextScale = clamp(scaleRef.current * f, 0.4, 2.5)
+      if (nextScale === scaleRef.current) return
+      scaleRef.current = nextScale
+      onScale(item.id, nextScale)
+    }
+    wheelRef.current = onWheel
+    window.addEventListener('wheel', onWheel, { passive: false })
     try {
       ;(e.target as any).setPointerCapture?.(e.pointerId)
     } catch {
@@ -398,6 +456,10 @@ function InvItemView({
   const finishDrag = useCallback(() => {
     if (!drag.current) return
     drag.current = null
+    if (wheelRef.current) {
+      window.removeEventListener('wheel', wheelRef.current)
+      wheelRef.current = null
+    }
     setCursor(hoveredRef.current ? 'grab' : '')
     onDragActive(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -406,8 +468,8 @@ function InvItemView({
   return (
     <group
       ref={group}
-      position={[item.x, item.y, item.z]}
-      rotation={[0, item.rotY, 0]}
+      position={[pose.x, pose.y, pose.z]}
+      rotation={[0, pose.rotY, 0]}
       onPointerOver={(e) => {
         e.stopPropagation()
         hoveredRef.current = true
@@ -443,7 +505,7 @@ function InvItemView({
     >
       <ItemModel preset={item.preset} decal={item.decal} />
       {/* 底部软影子 */}
-      <mesh position={[0, shadowY - item.y + 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh position={[0, shadowY - pose.y + 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]}>
         <circleGeometry args={[def.shadowR, 24]} />
         <meshBasicMaterial color="#6b5436" transparent opacity={shadowOp} depthWrite={false} />
       </mesh>
@@ -1159,7 +1221,9 @@ export function useItemPlacement({ weather, onWeatherChange }: { weather: string
       setErr('')
       try {
         const src = await readFile(file)
-        const face = await stylizeDecal(src, getPreset(activeItem.preset).aspect)
+        const def = getPreset(activeItem.preset)
+        /* 满幅预设（书本）：图片铺满整个贴面区；其他预设保留米色边框 */
+        const face = await stylizeDecal(src, def.aspect, { full: !!def.full })
         setItems((list) => list.map((i) => (i.id === activeItem.id ? { ...i, decal: face.dataUrl } : i)))
       } catch (e2) {
         setErr(e2 instanceof Error ? e2.message : '贴图失败，请重试')
@@ -1232,6 +1296,7 @@ export function ItemPlacementScene({ hp }: { hp: ItemPlacementApi }) {
           onPick={(id) => hp.pick('item', id)}
           onDragActive={(on) => hp.markDrag('item', it.id, on)}
           onMove={(p) => hp.setItems((list) => list.map((x) => (x.id === it.id ? { ...x, ...p } : x)))}
+          onScale={(id, scale) => hp.setItems((list) => list.map((x) => (x.id === id ? { ...x, scale } : x)))}
         />
       ))}
     </>
@@ -1263,7 +1328,7 @@ export function ItemPlacementOverlay({ hp }: { hp: ItemPlacementApi }) {
       </label>
 
       {/* 操作提示 */}
-      <p className="mr3d-hint">拖动物品/贴图随意移动 · 按住 Shift 拖动可前后调整远近 · 点击打开回忆</p>
+      <p className="mr3d-hint">拖动物品/贴图随意移动 · 按住 Shift 拖动可前后调整远近 · 按住左键滚动滚轮缩放物品 · 书本拖进书柜会自动竖着上架 · 点击打开回忆</p>
 
       {/* 三选一弹窗 */}
       {hp.pending && !hp.cropMode && (
