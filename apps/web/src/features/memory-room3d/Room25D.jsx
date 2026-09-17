@@ -2,8 +2,8 @@
  * Room25D —— “小角落”房间 2.5D 伪 3D 版
  *
  * 相机：固定平视（正对房间正面），禁止旋转，只允许轻微左右平移 + 缩放
- * 风格：明亮低对比、清晰硬边阴影（basic shadow map）、颜色分区清晰
- * 材质：软（坐垫/帆布 哑光米白）× 硬（金属拉手/塑料灯罩），木纹（地板浅木、椅腿琥珀木棕）
+ * 风格：明亮低对比、软阴影（PCFSoft）、颜色分区清晰
+ * 材质：奶油白墙 × 深红棕亮面木地板（clearcoat）× 胡桃木收边/书柜/相框（参考微缩房间摄影）
  * 几何：全部 Box / Plane / Cylinder + RoundedBox（drei），零外部 GLB
  * 桌面大部分留空，作为物品摆放区（见文件底部注释的 MatchaCup 摆放说明）
  *
@@ -44,9 +44,9 @@ const WEATHER = {
 }
 const WEATHER_DEFAULT = { sky: ['#bfe0f5', '#eef7fc'], light: '#ecf1fa', intensity: 2.2, ambient: 0.8, dir: 0.9, tint: '#fff4e6', cloud: 0.3 }
 
-/* ---------- 配色 ---------- */
-const WALL_OFFWHITE = '#f3eee4' // 米白墙
-const CEILING_CREAM = '#f8f4ec'
+/* ---------- 配色（参考微缩房间摄影：奶油白墙 + 深红棕亮面地板 + 胡桃木收边） ---------- */
+const WALL_OFFWHITE = '#f7f3ea' // 奶油白墙
+const CEILING_CREAM = '#faf7f0'
 const FURNITURE_CREAM = '#f4edde' // 家具米色
 const SHELL_CANVAS = '#efe8da' // 椅子帆布米白
 const GOLD_METAL = '#c8b28a' // 金属（拉手/灯杆）
@@ -138,6 +138,27 @@ function createMarbleTexture() {
   }
   const t = new THREE.CanvasTexture(c)
   t.colorSpace = THREE.SRGBColorSpace
+  return t
+}
+
+// 红白格纹（圆毯，参考图的红白 gingham 圆毯；纯贴图，不加建模）
+function createGinghamTexture() {
+  const c = document.createElement('canvas')
+  c.width = 256
+  c.height = 256
+  const ctx = c.getContext('2d')
+  ctx.fillStyle = '#f5eee1'
+  ctx.fillRect(0, 0, 256, 256)
+  ctx.fillStyle = 'rgba(198,86,66,0.8)'
+  for (let i = 0; i < 4; i++) {
+    ctx.fillRect(i * 64, 0, 32, 256)
+    ctx.fillRect(0, i * 64, 256, 32)
+  }
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  t.wrapS = t.wrapT = THREE.RepeatWrapping
+  t.repeat.set(4, 4)
+  t.anisotropy = 4
   return t
 }
 
@@ -537,7 +558,8 @@ function Shell({ floorMap }) {
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <planeGeometry args={[ROOM_W, ROOM_D]} />
-        <meshStandardMaterial map={floorMap} roughness={0.7} />
+        {/* 参考图：深红棕木地板带漆面光泽（clearcoat 出高光条） */}
+        <meshPhysicalMaterial map={floorMap} roughness={0.38} clearcoat={0.45} clearcoatRoughness={0.28} />
       </mesh>
       <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, ROOM_H, 0]}>
         <planeGeometry args={[ROOM_W, ROOM_D]} />
@@ -599,8 +621,8 @@ function WindowWall({ skyMap, lightColor, lightIntensity }) {
   )
 }
 
-/* ---------- 长桌：米色柜体 + 大理石桌面，左抽屉柱 + 右抽屉，中部留空 ---------- */
-function Desk({ marbleMap }) {
+/* ---------- 长桌：胡桃木桌面 + 奶油抽屉柜，左抽屉柱 + 右抽屉，中部留空 ---------- */
+function Desk({ woodMap }) {
   const kneeL = -0.42 // 桌下留空区左界
   const kneeR = 0.42 // 桌下留空区右界（椅子位置）
   const drawerYs = [0.24, 0.5, 0.76]
@@ -609,10 +631,10 @@ function Desk({ marbleMap }) {
   )
   return (
     <group>
-      {/* 桌面 */}
+      {/* 桌面（参考图：木面书桌，微漆光泽） */}
       <mesh position={[0, DESK_TOP_Y - 0.03, DESK_Z]} castShadow receiveShadow>
         <boxGeometry args={[DESK_L, 0.06, 0.62]} />
-        <meshPhysicalMaterial map={marbleMap} roughness={0.4} clearcoat={0.35} clearcoatRoughness={0.35} />
+        <meshPhysicalMaterial map={woodMap} roughness={0.45} clearcoat={0.3} clearcoatRoughness={0.35} />
       </mesh>
       {/* 左抽屉柱 */}
       <mesh position={[-DESK_L / 2 + 0.25, 0.5, DESK_Z]} castShadow>
@@ -697,7 +719,7 @@ function Chair({ woodMap }) {
   )
 }
 
-/* ---------- 右侧书柜：米色柜体 + 暖光灯带 + 彩色薄书 ---------- */
+/* ---------- 右侧书柜：胡桃木柜体 + 暖光灯带 + 彩色薄书（参考图深木色书柜） ---------- */
 function Bookshelf({ woodMap }) {
   const W = 1.15
   const H = 2.55
@@ -710,23 +732,23 @@ function Bookshelf({ woodMap }) {
   const bookColors = ['#e8c8c8', '#c8d8c0', '#d8c8e8', '#f0e0c0', '#c0d0e0']
   return (
     <group position={[cx, 0, BACK_Z + D / 2 + 0.03]}>
-      {/* 背板 / 顶底 / 侧板 */}
+      {/* 背板 / 顶底 / 侧板（背板略浅一档，衬托彩色书脊） */}
       <mesh position={[0, H / 2, -D / 2 + 0.015]} receiveShadow>
         <boxGeometry args={[W, H, 0.03]} />
-        <meshStandardMaterial color="#ece4d2" roughness={0.9} />
+        <meshStandardMaterial map={woodMap} color="#d9b892" roughness={0.6} />
       </mesh>
       <mesh position={[0, H, 0]} castShadow>
         <boxGeometry args={[W + 0.06, 0.05, D]} />
-        <meshStandardMaterial color={FURNITURE_CREAM} roughness={0.85} />
+        <meshStandardMaterial map={woodMap} roughness={0.5} />
       </mesh>
       <mesh position={[0, 0.03, 0]}>
         <boxGeometry args={[W + 0.06, 0.06, D]} />
-        <meshStandardMaterial color={FURNITURE_CREAM} roughness={0.85} />
+        <meshStandardMaterial map={woodMap} roughness={0.5} />
       </mesh>
       {[-W / 2, W / 2].map((x) => (
         <mesh key={x} position={[x, H / 2, 0]} castShadow>
           <boxGeometry args={[0.05, H, D]} />
-          <meshStandardMaterial color={FURNITURE_CREAM} roughness={0.85} />
+          <meshStandardMaterial map={woodMap} roughness={0.5} />
         </mesh>
       ))}
       {/* 层板 + 灯带 + 书 */}
@@ -734,7 +756,7 @@ function Bookshelf({ woodMap }) {
         <group key={y}>
           <mesh position={[0, y, 0]} castShadow receiveShadow>
             <boxGeometry args={[W - 0.06, 0.035, D - 0.04]} />
-            <meshStandardMaterial color={FURNITURE_CREAM} roughness={0.85} />
+            <meshStandardMaterial map={woodMap} roughness={0.5} />
           </mesh>
           <mesh position={[0, y - 0.024, D / 2 - 0.08]}>
             <boxGeometry args={[W - 0.2, 0.012, 0.02]} />
@@ -754,7 +776,7 @@ function Bookshelf({ woodMap }) {
         <group key={`d${y}`}>
           <mesh position={[0, y, D / 2 - 0.005]}>
             <boxGeometry args={[W - 0.1, 0.18, 0.02]} />
-            <meshStandardMaterial color="#f7f1e4" roughness={0.85} />
+            <meshStandardMaterial map={woodMap} roughness={0.5} />
           </mesh>
           <mesh position={[0, y, D / 2 + 0.012]} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.011, 0.011, 0.016, 12]} />
@@ -779,9 +801,9 @@ function CeilingLamp() {
   )
 }
 
-/* ---------- 踢脚线 + 顶角线（参考图：壳体厚边的收口感） ---------- */
-function Trims() {
-  const trim = <meshStandardMaterial color="#eae2d0" roughness={0.9} />
+/* ---------- 踢脚线 + 顶角线（参考图：深胡桃木收边，像顶部木梁的收口感） ---------- */
+function Trims({ woodMap }) {
+  const trim = <meshStandardMaterial map={woodMap} roughness={0.5} />
   return (
     <group>
       {/* 后墙踢脚线（避让抽屉柜，贴墙即可） */}
@@ -810,17 +832,18 @@ function Trims() {
   )
 }
 
-/* ---------- 圆形地毯（参考图中部的圆毯） ---------- */
+/* ---------- 圆形地毯（参考图：红白格纹圆毯，纯贴图不换建模） ---------- */
 function Rug() {
+  const ginghamMap = useMemo(createGinghamTexture, [])
   return (
     <group position={[0.15, 0.012, 0.7]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
         <circleGeometry args={[1.12, 40]} />
-        <meshStandardMaterial color="#f2ebdb" roughness={1} />
+        <meshStandardMaterial map={ginghamMap} roughness={1} />
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.002, 0]}>
         <ringGeometry args={[1.0, 1.08, 40]} />
-        <meshStandardMaterial color="#e3dac4" roughness={1} />
+        <meshStandardMaterial color="#c05a44" roughness={1} />
       </mesh>
     </group>
   )
@@ -857,9 +880,9 @@ function Sofa({ woodMap }) {
           </mesh>
         </group>
       ))}
-      {/* 靠枕 */}
+      {/* 靠枕（参考图：焦糖色皮质靠枕，奶油沙发上的点缀） */}
       <RoundedBox args={[0.36, 0.34, 0.12]} radius={0.05} smoothness={4} position={[-0.38, 0.68, -0.16]} rotation={[-0.25, 0.1, 0.06]} castShadow>
-        <meshStandardMaterial color="#f9f5ea" roughness={0.95} />
+        <meshStandardMaterial color="#c9925e" roughness={0.7} />
       </RoundedBox>
       {/* 短木腿 */}
       {[
@@ -928,7 +951,7 @@ function PottedPlant() {
     <group position={[-2.7, 0, -2.4]}>
       <mesh position={[0, 0.09, 0]} castShadow>
         <cylinderGeometry args={[0.11, 0.085, 0.18, 18]} />
-        <meshStandardMaterial color="#f0e9d8" roughness={0.9} />
+        <meshStandardMaterial color="#f8f6f1" roughness={0.75} />
       </mesh>
       <mesh position={[0, 0.175, 0]}>
         <cylinderGeometry args={[0.095, 0.095, 0.02, 18]} />
@@ -944,8 +967,8 @@ function PottedPlant() {
   )
 }
 
-/* ---------- 右墙相框墙（参考图右侧的错落白框；完全平贴墙面，像粘在墙上一样） ---------- */
-function WallFrames() {
+/* ---------- 右墙相框墙（参考图右侧的错落木框白芯照片墙；完全平贴墙面） ---------- */
+function WallFrames({ woodMap }) {
   const frames = [
     { z: -1.6, y: 2.25, w: 0.42, h: 0.32 },
     { z: -0.95, y: 2.3, w: 0.3, h: 0.4 },
@@ -959,12 +982,12 @@ function WallFrames() {
         // rotation.y = -π/2：框面严格平行墙面（背面完全贴墙，绝不穿模）；x 留 1.5mm 缝防 z-fighting
         <group key={i} position={[2.9815, f.y, f.z]} rotation={[0, -Math.PI / 2, 0]}>
           <RoundedBox args={[f.w, f.h, 0.035]} radius={0.012} smoothness={3} castShadow>
-            <meshStandardMaterial color="#ece4d2" roughness={0.85} />
+            <meshStandardMaterial map={woodMap} roughness={0.5} />
           </RoundedBox>
-          {/* 空白相纸（比框面亮一点，接近参考图的“空框”效果） */}
+          {/* 白色相纸（参考图：深木框 + 大面积白卡纸） */}
           <mesh position={[0, 0, 0.02]}>
             <planeGeometry args={[f.w - 0.08, f.h - 0.08]} />
-            <meshStandardMaterial color="#fbf8f0" roughness={0.95} />
+            <meshStandardMaterial color="#fdfbf4" roughness={0.95} />
           </mesh>
         </group>
       ))}
@@ -974,9 +997,10 @@ function WallFrames() {
 
 /* ---------- 房间整体（weather: 'sunny'|'cloudy'|'rain'|'snow'|''） ---------- */
 export function Room25DModel({ weather = '', ...props }) {
-  const floorMap = useMemo(() => createWoodTexture([234, 214, 178]), [])
+  /* 参考微缩房间摄影的三种木色：地板深红棕亮面 / 胡桃木收边与柜体 / 琥珀木椅腿 */
+  const floorMap = useMemo(() => createWoodTexture([164, 88, 52], 'rgba(72,32,16,0.55)'), [])
+  const walnutMap = useMemo(() => createWoodTexture([130, 76, 46], 'rgba(55,26,12,0.5)'), [])
   const amberMap = useMemo(() => createWoodTexture([196, 152, 96], 'rgba(110,80,45,0.4)'), [])
-  const marbleMap = useMemo(createMarbleTexture, [])
   const W = WEATHER[weather] || WEATHER_DEFAULT
   const skyMap = useMemo(() => createSkyTexture(W.sky, W.cloud, W.sun), [W])
   return (
@@ -985,17 +1009,17 @@ export function Room25DModel({ weather = '', ...props }) {
       <WindowWall skyMap={skyMap} lightColor={W.light} lightIntensity={W.intensity} />
       <Sunlight weather={weather} />
       <Precipitation weather={weather} />
-      <Desk marbleMap={marbleMap} />
+      <Desk woodMap={walnutMap} />
       <Chair woodMap={amberMap} />
-      <Bookshelf woodMap={amberMap} />
+      <Bookshelf woodMap={walnutMap} />
       {/* 参考图新增：相框墙（右墙）+ 沙发区（左侧）+ 收边/圆毯 */}
-      <WallFrames />
+      <WallFrames woodMap={walnutMap} />
       <Sofa woodMap={amberMap} />
       <Pouf />
       <SideTable />
       <PottedPlant />
       <Rug />
-      <Trims />
+      <Trims woodMap={walnutMap} />
       <CeilingLamp />
     </group>
   )
@@ -1006,14 +1030,14 @@ export default function Room25DScene({ weather = '' }) {
   const W = WEATHER[weather] || WEATHER_DEFAULT
   return (
     <Canvas
-      shadows="basic" /* 硬边阴影，接近手绘插画的清晰阴影 */
+      shadows="soft" /* 软阴影：接近微缩摄影棚的柔光质感 */
       camera={{ position: CAM_POS, fov: CAM_FOV }}
       style={{ width: '100%', height: '100vh' }}
-      gl={{ toneMappingExposure: 1.0 }}
+      gl={{ toneMappingExposure: 1.05 }}
     >
-      <color attach="background" args={['#f4efe6']} />
+      <color attach="background" args={['#ece3d7']} />
       {/* 环境光/主光随天气变化：雨天整体压暗偏冷，晴天暖亮 */}
-      <ambientLight intensity={W.ambient} color="#fff4e6" />
+      <ambientLight intensity={W.ambient} color="#fff6ee" />
       <directionalLight
         position={[2.5, 5, 4]}
         intensity={W.dir}
