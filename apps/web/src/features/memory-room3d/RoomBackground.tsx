@@ -11,7 +11,7 @@
  *   ① overview  鸟瞰全景：高空俯视整个房间，鼠标带轻微视差
  *   ② entering  点击画布任意处 → 二次贝塞尔曲线俯冲进屋（2.4s，缓入缓出），同时 fov 由 40→58
  *   ③ indoor    室内第一人称：站在房间中后段，一眼能看全左侧沙发和正前方书桌；
- *                按住鼠标右键拖动才转头（±17.2°，低灵敏度），松开即固定当前视角
+ *                按住鼠标左键在画布上拖动才转头（±17.2°，低灵敏度），松开即固定当前视角
  *
  * ⚠️ 分支纪律（feature-room-background）：本文件只做背景更换、房间模型美化、窗外天气变化、
  *    视角系统，绝对不包含任何物品摆放 / 拖拽 / 缩放 / AI 抠图逻辑。物品通过 children 挂载点注入。
@@ -41,7 +41,11 @@ const IN = {
 const FLY_CTRL = new THREE.Vector3(0.6, 1.7, 3.2)
 const FLY_DURATION = 2.4 // 秒
 
-/* 转头参数（只有按住鼠标右键拖动才生效，松开后视角固定不动）
+/* 转头参数（只有按住鼠标左键在画布上拖动才生效，松开后视角固定不动）
+ * 左键同时用于「选中/打开回忆卡片」和「拖动物品」，所以加了三重防护：
+ *   ① pointerdown 的 target 必须是 CANVAS（在 HTML 面板上拖动不算）
+ *   ② 累计位移超过 DRAG_THRESHOLD 才真的开始转头（单击不会让视角抖动）
+ *   ③ 拖动物品期间（paused）完全不转头，避免物品和镜头一起动
  * 灵敏度压得比较低：横向拖满约 215px 才走完 ±17.2°，避免快速摆动造成眩晕。
  * 不穿帮验算：转头 17.2° + 58°fov 在 16:9 下的水平半角 44.6° ≈ 61.8° < 90°，
  * 最外侧视线仍打在左右侧墙上（距侧墙 3，落点 z ≈ 0.84，仍在房间内），看不到房间外的空白。 */
@@ -50,6 +54,7 @@ const MAX_PITCH = 0.045 // ±2.6°，只做很轻微的抬头/低头
 const YAW_SENS = 0.0014 // rad / px（向右拖 = 向右转头）
 const PITCH_SENS = 0.0008 // rad / px（向下拖 = 向下看）
 const LOOK_LAMBDA = 6 // 转头跟随的阻尼
+const DRAG_THRESHOLD = 4 // px：位移超过这个距离才算「拖动转头」，单击不受影响
 /* 鸟瞰时的鼠标视差幅度 */
 const PARALLAX = { x: 0.35, y: 0.18 }
 
@@ -65,14 +70,18 @@ function CinematicRig({
   phase: Phase
   paused: boolean // 拖动物品时暂停转头，避免拖拽平面被镜头带着跑
   onArrive: () => void
-  onLookStart?: () => void // 用户第一次按住右键转头（用来收起提示）
+  onLookStart?: () => void // 用户第一次拖动转头（用来收起提示）
 }) {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
   const mouse = useRef({ x: 0, y: 0 }) // 归一化鼠标位置 -1~1（只用于鸟瞰视差）
   const look = useRef({ yaw: 0, pitch: 0 }) // 当前朝向（阻尼后的值）
-  const aim = useRef({ yaw: 0, pitch: 0 }) // 目标朝向（右键拖出来的值，松手后保持不变）
-  const rmb = useRef(false) // 鼠标右键是否按下
-  const last = useRef({ x: 0, y: 0 }) // 上一帧鼠标位置，用来算增量
+  const aim = useRef({ yaw: 0, pitch: 0 }) // 目标朝向（拖出来的值，松手后保持不变）
+  const drag = useRef(false) // 左键是否正按在画布上
+  const moved = useRef(0) // 本次按下累计位移，超过阈值才开始转头
+  const last = useRef({ x: 0, y: 0 }) // 上一次鼠标位置，用来算增量
+  /* paused 是 prop，放进 ref 才能在事件回调里读到最新值 */
+  const pausedRef = useRef(paused)
+  pausedRef.current = paused
   const cb = useRef(onLookStart)
   cb.current = onLookStart
   const flyT = useRef(0)
@@ -93,50 +102,53 @@ function CinematicRig({
     return () => window.removeEventListener('mousemove', onMove)
   }, [])
 
-  /* 转头：按住鼠标右键拖动 → 累加增量到 aim；松开右键 aim 不再变化 → 视角固定。
+  /* 转头：按住鼠标左键在画布上拖动 → 累加增量到 aim；松开左键 aim 不再变化 → 视角固定。
    * 用增量（而不是鼠标绝对位置）驱动，所以鼠标停在屏幕角落时视角不会一直被拽着走。 */
   useEffect(() => {
     const clamp = (v: number, lim: number) => Math.max(-lim, Math.min(lim, v))
+    const onCanvas = (e: Event) => {
+      const t = e.target as HTMLElement | null
+      return !!t && t.tagName === 'CANVAS'
+    }
     const down = (e: PointerEvent) => {
-      if (e.button !== 2) return // 只认右键
-      rmb.current = true
+      if (e.button !== 0) return // 只认左键
+      if (!onCanvas(e)) return // 在 HTML 面板上按下的不算（UI 控件照常工作）
+      drag.current = true
+      moved.current = 0
       last.current.x = e.clientX
       last.current.y = e.clientY
-      cb.current?.()
     }
     const move = (e: PointerEvent) => {
-      if (!rmb.current) return
+      if (!drag.current) return
       const dx = e.clientX - last.current.x
       const dy = e.clientY - last.current.y
       last.current.x = e.clientX
       last.current.y = e.clientY
+      /* 拖动物品时不转头（物品拖拽优先） */
+      if (pausedRef.current) return
+      moved.current += Math.abs(dx) + Math.abs(dy)
+      if (moved.current < DRAG_THRESHOLD) return // 还只是「点击」，先不动视角
+      cb.current?.()
       aim.current.yaw = clamp(aim.current.yaw - dx * YAW_SENS, MAX_YAW)
       aim.current.pitch = clamp(aim.current.pitch - dy * PITCH_SENS, MAX_PITCH)
     }
     const up = (e: PointerEvent) => {
-      if (e.button === 2) rmb.current = false
+      if (e.button === 0) drag.current = false
     }
     const cancel = () => {
-      rmb.current = false
-    }
-    /* 画布上屏蔽浏览器右键菜单（页面其它 UI 保持正常右键） */
-    const ctx = (e: MouseEvent) => {
-      const t = e.target as HTMLElement | null
-      if (t && t.tagName === 'CANVAS') e.preventDefault()
+      drag.current = false
     }
     window.addEventListener('pointerdown', down)
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
     window.addEventListener('pointercancel', cancel)
     window.addEventListener('blur', cancel)
-    window.addEventListener('contextmenu', ctx)
     return () => {
       window.removeEventListener('pointerdown', down)
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
       window.removeEventListener('pointercancel', cancel)
       window.removeEventListener('blur', cancel)
-      window.removeEventListener('contextmenu', ctx)
     }
   }, [])
 
@@ -301,7 +313,7 @@ export default function RoomBackground({
         />
       </Canvas>
       {phase === 'overview' && <div style={HINT_STYLE}>点击进入房间</div>}
-      {phase === 'indoor' && !looked && <div style={HINT_STYLE}>按住鼠标右键转头</div>}
+      {phase === 'indoor' && !looked && <div style={HINT_STYLE}>按住鼠标左键拖动转头</div>}
       <style>{`@keyframes mr3d-hint-pulse { 0%,100% { opacity: .55 } 50% { opacity: 1 } }`}</style>
     </>
   )
