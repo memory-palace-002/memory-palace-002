@@ -9,11 +9,12 @@
  *
  * 依赖：npm install three @react-three/fiber @react-three/drei
  */
-import React, { useMemo, useRef } from 'react'
+import React, { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls, RoundedBox } from '@react-three/drei'
 import { RectAreaLightUniformsLib } from 'three/examples/jsm/lights/RectAreaLightUniformsLib.js'
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
 
 RectAreaLightUniformsLib.init()
 
@@ -168,11 +169,11 @@ function createLeatherTextures() {
   const paint = (ctx, base, dark, light) => {
     ctx.fillStyle = base
     ctx.fillRect(0, 0, SIZE, SIZE)
-    /* 皮革颗粒（大小不一的高光/暗点，凑出皮面的细密纹路） */
-    for (let i = 0; i < 3200; i++) {
+    /* 皮革颗粒（颗粒做粗一点，相机在 9 米外才看得见皮纹） */
+    for (let i = 0; i < 2400; i++) {
       const x = Math.random() * SIZE
       const y = Math.random() * SIZE
-      const r = 0.5 + Math.random() * 1.5
+      const r = 1.2 + Math.random() * 2.6
       ctx.fillStyle = Math.random() < 0.5 ? light : dark
       ctx.beginPath()
       ctx.arc(x, y, r, 0, Math.PI * 2)
@@ -181,7 +182,7 @@ function createLeatherTextures() {
     /* 浅浅的折痕（长波浪线，让皮面有使用感） */
     for (let i = 0; i < 26; i++) {
       ctx.strokeStyle = dark
-      ctx.lineWidth = 0.6 + Math.random() * 1.2
+      ctx.lineWidth = 1.2 + Math.random() * 2
       ctx.beginPath()
       let x = Math.random() * SIZE
       let y = Math.random() * SIZE
@@ -199,12 +200,12 @@ function createLeatherTextures() {
     const c = document.createElement('canvas')
     c.width = c.height = SIZE
     const ctx = c.getContext('2d')
-    if (mode === 'color') paint(ctx, '#cfcfcf', 'rgba(0,0,0,0.055)', 'rgba(255,255,255,0.06)')
-    else paint(ctx, '#808080', 'rgba(0,0,0,0.45)', 'rgba(255,255,255,0.45)')
+    if (mode === 'color') paint(ctx, '#cfcfcf', 'rgba(0,0,0,0.12)', 'rgba(255,255,255,0.13)')
+    else paint(ctx, '#808080', 'rgba(0,0,0,0.6)', 'rgba(255,255,255,0.6)')
     const t = new THREE.CanvasTexture(c)
     t.colorSpace = mode === 'color' ? THREE.SRGBColorSpace : THREE.NoColorSpace
     t.wrapS = t.wrapT = THREE.RepeatWrapping
-    t.repeat.set(2, 2)
+    t.repeat.set(1.6, 1.6)
     t.anisotropy = 4
     return t
   }
@@ -219,12 +220,12 @@ function createPlushTexture() {
   const ctx = c.getContext('2d')
   ctx.fillStyle = '#efefef'
   ctx.fillRect(0, 0, SIZE, SIZE)
-  for (let i = 0; i < 5200; i++) {
+  for (let i = 0; i < 3600; i++) {
     const x = Math.random() * SIZE
     const y = Math.random() * SIZE
-    ctx.fillStyle = Math.random() < 0.5 ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.07)'
+    ctx.fillStyle = Math.random() < 0.5 ? 'rgba(0,0,0,0.1)' : 'rgba(255,255,255,0.13)'
     ctx.beginPath()
-    ctx.arc(x, y, 0.5 + Math.random(), 0, Math.PI * 2)
+    ctx.arc(x, y, 1 + Math.random() * 1.8, 0, Math.PI * 2)
     ctx.fill()
   }
   /* 绒毛短纤维 */
@@ -232,9 +233,9 @@ function createPlushTexture() {
     const x = Math.random() * SIZE
     const y = Math.random() * SIZE
     const a = Math.random() * Math.PI * 2
-    const l = 1.5 + Math.random() * 2.5
-    ctx.strokeStyle = Math.random() < 0.5 ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.06)'
-    ctx.lineWidth = 0.7
+    const l = 2.5 + Math.random() * 4
+    ctx.strokeStyle = Math.random() < 0.5 ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.12)'
+    ctx.lineWidth = 1.1
     ctx.beginPath()
     ctx.moveTo(x, y)
     ctx.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l)
@@ -604,6 +605,30 @@ function Sunlight({ weather }) {
   )
 }
 
+/* ---------- 环境反射（关键质感来源） ----------
+ * 没有环境贴图时，clearcoat(皮革/漆面)与金属只有点光源的一个小亮点，看起来「没质感」。
+ * 这里用 three 自带的 RoomEnvironment 离线烘一张环境贴图（纯代码生成，不加载外部资源），
+ * 让皮面/木漆面/金属拉手有连续的环境反射；intensity 压低，避免把房间照得发灰。
+ */
+function RoomEnv({ intensity = 0.45 }) {
+  const gl = useThree((s) => s.gl)
+  const scene = useThree((s) => s.scene)
+  useEffect(() => {
+    const pmrem = new THREE.PMREMGenerator(gl)
+    const envScene = new RoomEnvironment()
+    const tex = pmrem.fromScene(envScene, 0.04).texture
+    scene.environment = tex
+    scene.environmentIntensity = intensity
+    return () => {
+      tex.dispose()
+      pmrem.dispose()
+      envScene.traverse?.((o) => o.geometry?.dispose?.())
+      scene.environment = null
+    }
+  }, [gl, scene, intensity])
+  return null
+}
+
 /* ---------- 固定平视相机：锁旋转，允许轻微平移 + 缩放 ---------- */
 function FixedCameraRig() {
   const controls = useRef()
@@ -777,34 +802,24 @@ function Desk({ woodMap }) {
 }
 
 /* ---------- 帆布壳椅：米白圆角壳体 + 琥珀木腿（参考 clipboard 图） ---------- */
-function Chair({ woodMap, leatherMap, leatherBump }) {
+function Chair({ woodMap, plushMap }) {
   const legData = [
     [-0.19, -0.16, 0.09, -0.07],
     [0.19, -0.16, -0.09, -0.07],
     [-0.19, 0.16, 0.09, 0.07],
     [0.19, 0.16, -0.09, 0.07],
   ]
-  /* 黑皮：细皮纹凹凸 + clearcoat 轻微反光 */
-  const blackLeather = (
-    <meshPhysicalMaterial
-      map={leatherMap}
-      bumpMap={leatherBump}
-      bumpScale={0.005}
-      color="#2a2622"
-      roughness={0.4}
-      clearcoat={0.6}
-      clearcoatRoughness={0.24}
-    />
-  )
+  /* 米白绒面：柔和哑光，与沙发的短绒同一族质感 */
+  const creamFabric = <meshStandardMaterial map={plushMap} color="#f1ead9" roughness={1} />
   return (
     <group position={[0, 0, BACK_Z + 1.75]}>
-      {/* 坐垫壳（黑色皮质，带光泽） */}
+      {/* 坐垫壳（米白短绒） */}
       <RoundedBox args={[0.5, 0.08, 0.46]} radius={0.035} smoothness={4} position={[0, 0.44, 0]} castShadow receiveShadow>
-        {blackLeather}
+        {creamFabric}
       </RoundedBox>
-      {/* 靠背壳（黑色皮质，圆角、微微后仰） */}
+      {/* 靠背壳（米白短绒，圆角、微微后仰） */}
       <RoundedBox args={[0.5, 0.44, 0.06]} radius={0.03} smoothness={4} position={[0, 0.68, 0.2]} rotation={[-0.12, 0, 0]} castShadow>
-        {blackLeather}
+        {creamFabric}
       </RoundedBox>
       {/* 四条外撇琥珀木腿（硬：木质） */}
       {legData.map(([x, z, rz, rx], i) => (
@@ -817,8 +832,8 @@ function Chair({ woodMap, leatherMap, leatherBump }) {
   )
 }
 
-/* ---------- 右侧书柜：胡桃木柜体 + 暖光灯带 + 彩色薄书（参考图深木色书柜） ---------- */
-function Bookshelf({ woodMap }) {
+/* ---------- 右侧书柜：浅暖米色柜体（降棕，保持温馨）+ 暖光灯带 + 彩色薄书 ---------- */
+function Bookshelf() {
   const W = 1.15
   const H = 2.55
   const D = 0.3
@@ -828,25 +843,27 @@ function Bookshelf({ woodMap }) {
     [-0.42, 0.55], [-0.34, 0.6], [-0.22, 0.55], [0.1, 1.05], [0.2, 0.62],
   ]
   const bookColors = ['#e8c8c8', '#c8d8c0', '#d8c8e8', '#f0e0c0', '#c0d0e0']
+  /* 柜体：浅暖米（比墙面深一档，区分层次但不压暗房间）；轻微漆面光泽 */
+  const shell = <meshPhysicalMaterial color="#eee7d9" roughness={0.6} clearcoat={0.25} clearcoatRoughness={0.4} />
   return (
     <group position={[cx, 0, BACK_Z + D / 2 + 0.03]}>
       {/* 背板 / 顶底 / 侧板（背板略浅一档，衬托彩色书脊） */}
       <mesh position={[0, H / 2, -D / 2 + 0.015]} receiveShadow>
         <boxGeometry args={[W, H, 0.03]} />
-        <meshStandardMaterial map={woodMap} color="#d9b892" roughness={0.6} />
+        <meshStandardMaterial color="#f4eee1" roughness={0.85} />
       </mesh>
       <mesh position={[0, H, 0]} castShadow>
         <boxGeometry args={[W + 0.06, 0.05, D]} />
-        <meshStandardMaterial map={woodMap} roughness={0.5} />
+        {shell}
       </mesh>
       <mesh position={[0, 0.03, 0]}>
         <boxGeometry args={[W + 0.06, 0.06, D]} />
-        <meshStandardMaterial map={woodMap} roughness={0.5} />
+        {shell}
       </mesh>
       {[-W / 2, W / 2].map((x) => (
         <mesh key={x} position={[x, H / 2, 0]} castShadow>
           <boxGeometry args={[0.05, H, D]} />
-          <meshStandardMaterial map={woodMap} roughness={0.5} />
+          {shell}
         </mesh>
       ))}
       {/* 层板 + 灯带 + 书 */}
@@ -854,7 +871,7 @@ function Bookshelf({ woodMap }) {
         <group key={y}>
           <mesh position={[0, y, 0]} castShadow receiveShadow>
             <boxGeometry args={[W - 0.06, 0.035, D - 0.04]} />
-            <meshStandardMaterial map={woodMap} roughness={0.5} />
+            {shell}
           </mesh>
           <mesh position={[0, y - 0.024, D / 2 - 0.08]}>
             <boxGeometry args={[W - 0.2, 0.012, 0.02]} />
@@ -874,7 +891,7 @@ function Bookshelf({ woodMap }) {
         <group key={`d${y}`}>
           <mesh position={[0, y, D / 2 - 0.005]}>
             <boxGeometry args={[W - 0.1, 0.18, 0.02]} />
-            <meshStandardMaterial map={woodMap} roughness={0.5} />
+            {shell}
           </mesh>
           <mesh position={[0, y, D / 2 + 0.012]} rotation={[Math.PI / 2, 0, 0]}>
             <cylinderGeometry args={[0.011, 0.011, 0.016, 12]} />
@@ -980,7 +997,7 @@ function Sofa({ woodMap, plushMap, leatherMap, leatherBump }) {
         <meshPhysicalMaterial
           map={leatherMap}
           bumpMap={leatherBump}
-          bumpScale={0.006}
+          bumpScale={0.022}
           color="#c08a3e"
           roughness={0.42}
           clearcoat={0.55}
@@ -1102,7 +1119,8 @@ function WallFrames({ woodMap }) {
 export function Room25DModel({ weather = '', ...props }) {
   /* 参考微缩房间摄影的三种木色：地板深红棕亮面 / 胡桃木收边与柜体 / 琥珀木椅腿 */
   const floorMap = useMemo(() => createWoodTexture([164, 88, 52], 'rgba(72,32,16,0.55)'), [])
-  const walnutMap = useMemo(() => createWoodTexture([130, 76, 46], 'rgba(55,26,12,0.5)'), [])
+  /* 胡桃木 → 浅一档的暖橡木：保留木纹与光泽，但把房间的棕色调降下来 */
+  const walnutMap = useMemo(() => createWoodTexture([178, 134, 90], 'rgba(105,70,40,0.42)'), [])
   const amberMap = useMemo(() => createWoodTexture([196, 152, 96], 'rgba(110,80,45,0.4)'), [])
   const plushMap = useMemo(createPlushTexture, [])
   const leather = useMemo(createLeatherTextures, []) // { map, bump }：皮质颗粒纹 + 凹凸
@@ -1115,8 +1133,8 @@ export function Room25DModel({ weather = '', ...props }) {
       <Sunlight weather={weather} />
       <Precipitation weather={weather} />
       <Desk woodMap={walnutMap} />
-      <Chair woodMap={amberMap} leatherMap={leather.map} leatherBump={leather.bump} />
-      <Bookshelf woodMap={walnutMap} />
+      <Chair woodMap={amberMap} plushMap={plushMap} />
+      <Bookshelf />
       {/* 参考图新增：相框墙（右墙）+ 沙发区（左侧）+ 收边/圆毯 */}
       <WallFrames woodMap={walnutMap} />
       <Sofa woodMap={amberMap} plushMap={plushMap} leatherMap={leather.map} leatherBump={leather.bump} />
@@ -1141,8 +1159,9 @@ export default function Room25DScene({ weather = '' }) {
       gl={{ toneMappingExposure: 1.05 }}
     >
       <color attach="background" args={['#ece3d7']} />
+      <RoomEnv intensity={0.45} />
       {/* 环境光/主光随天气变化：雨天整体压暗偏冷，晴天暖亮 */}
-      <ambientLight intensity={W.ambient} color="#fff6ee" />
+      <ambientLight intensity={W.ambient * 0.85} color="#fff6ee" />
       <directionalLight
         position={[2.5, 5, 4]}
         intensity={W.dir}
