@@ -213,6 +213,76 @@ export async function flattenImage(
   return { dataUrl: cv.toDataURL('image/png'), width: w, height: h }
 }
 
+/* 圆角矩形路径 */
+function roundedRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  ctx.beginPath()
+  ctx.moveTo(x + r, y)
+  ctx.arcTo(x + w, y, x + w, y + h, r)
+  ctx.arcTo(x + w, y + h, x, y + h, r)
+  ctx.arcTo(x, y + h, x, y, r)
+  ctx.arcTo(x, y, x + w, y, r)
+  ctx.closePath()
+}
+
+/**
+ * 物品贴面：把用户图片转成与房间建模风格一致的「制品贴纸」
+ * cover 裁剪到目标比例 → 圆角 → 暖米色边框（像印在杯身/封面上的贴片）→ 轻微暖色调和
+ * 这样贴到预设模型上不会出现生硬的方图穿帮。
+ * @param aspect 贴面区宽高比（w/h）
+ */
+export function stylizeDecal(source: string, aspect = 1.3): Promise<{ dataUrl: string; width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => {
+      try {
+        const outW = 640
+        const pad = Math.round(outW * 0.045) // 米色边框宽
+        const innerW = outW - pad * 2
+        const innerH = Math.round(innerW / aspect)
+        const outH = innerH + pad * 2
+        const radius = Math.round(outW * 0.055)
+
+        const canvas = document.createElement('canvas')
+        canvas.width = outW
+        canvas.height = outH
+        const ctx = canvas.getContext('2d')
+        if (!ctx) throw new Error('浏览器不支持 Canvas')
+
+        /* 1. 米色底框（圆角，带极淡描边，模拟陶瓷/封面印刷边缘） */
+        roundedRectPath(ctx, 0, 0, outW, outH, radius)
+        ctx.fillStyle = '#f4edde'
+        ctx.fill()
+        ctx.strokeStyle = 'rgba(150,120,80,0.28)'
+        ctx.lineWidth = 3
+        ctx.stroke()
+
+        /* 2. 内圆角裁剪，cover 方式画入图片（色调轻微调和，贴上后不突兀） */
+        const iw = img.naturalWidth
+        const ih = img.naturalHeight
+        const scale = Math.max(innerW / iw, innerH / ih)
+        const dw = iw * scale
+        const dh = ih * scale
+        ctx.save()
+        roundedRectPath(ctx, pad, pad, innerW, innerH, radius - pad > 2 ? radius - pad : 2)
+        ctx.clip()
+        if ('filter' in ctx) ctx.filter = 'saturate(0.95) brightness(1.03)'
+        ctx.drawImage(img, pad + (innerW - dw) / 2, pad + (innerH - dh) / 2, dw, dh)
+        ctx.filter = 'none'
+        /* 3. 极淡的暖色罩，让贴面融进房间的暖色系 */
+        ctx.fillStyle = 'rgba(255,240,214,0.05)'
+        ctx.fillRect(pad, pad, innerW, innerH)
+        ctx.restore()
+
+        resolve({ dataUrl: canvas.toDataURL('image/png'), width: outW, height: outH })
+      } catch (e) {
+        reject(e instanceof Error ? e : new Error('贴面生成失败'))
+      }
+    }
+    img.onerror = () => reject(new Error('贴面生成失败：图片无法解码'))
+    img.src = source
+  })
+}
+
 /* 白边膨胀用的 8 个方向 */
 const DIRS8 = [
   [1, 0],

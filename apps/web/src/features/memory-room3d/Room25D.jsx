@@ -35,8 +35,10 @@ const PAN_X = 1.2 // 左右平移范围 ±1.2
  * ambient  室内环境光强度，dir 主光强度，tint 主光颜色
  */
 const WEATHER = {
-  sunny: { sky: ['#9fd0ef', '#dff0fb'], light: '#fff0d8', intensity: 3.2, ambient: 0.9, dir: 1.05, tint: '#fff4e2', cloud: 0.15 },
-  cloudy: { sky: ['#c2ccd4', '#e6ecef'], light: '#e6ecf3', intensity: 1.7, ambient: 0.76, dir: 0.55, tint: '#eef2f6', cloud: 0.75 },
+  // 晴天：整体调亮，sun=1 时窗外画太阳、窗边出现阳光光柱与地板光斑
+  sunny: { sky: ['#8fc7f0', '#e2f3fc'], light: '#ffedd0', intensity: 4.0, ambient: 1.02, dir: 1.35, tint: '#fff3da', cloud: 0.08, sun: 1 },
+  // 阴天：压暗——天空更灰、窗光/环境光/主光都再降一档
+  cloudy: { sky: ['#96a3ae', '#ccd6dc'], light: '#dfe6ec', intensity: 1.15, ambient: 0.58, dir: 0.38, tint: '#e3e9ee', cloud: 0.95 },
   rain: { sky: ['#6d7b88', '#aab7c1'], light: '#c2d2de', intensity: 0.95, ambient: 0.62, dir: 0.32, tint: '#d8e2e9', cloud: 1 },
   snow: { sky: ['#b9c7d1', '#eaf1f5'], light: '#e2edf4', intensity: 1.45, ambient: 0.8, dir: 0.5, tint: '#eaf1f6', cloud: 0.6 },
 }
@@ -139,45 +141,204 @@ function createMarbleTexture() {
   return t
 }
 
-// 窗外天空：渐变 + 云团（cloudAmount 越大云越厚，雨天接近满云）
-function createSkyTexture([top, bottom], cloudAmount) {
+// 窗外天空：渐变 + 簇状云团（cloudAmount 越大云越厚，雨天接近满云）
+// sun=true 时画太阳：亮核 + 多层光晕 + 放射光芒（晴天专属）
+function createSkyTexture([top, bottom], cloudAmount, sun = false) {
+  const S = 512
   const c = document.createElement('canvas')
-  c.width = 256
-  c.height = 256
+  c.width = S
+  c.height = S
   const ctx = c.getContext('2d')
-  const g = ctx.createLinearGradient(0, 0, 0, 256)
+  const g = ctx.createLinearGradient(0, 0, 0, S)
   g.addColorStop(0, top)
   g.addColorStop(1, bottom)
   ctx.fillStyle = g
-  ctx.fillRect(0, 0, 256, 256)
-  const n = Math.round(cloudAmount * 14)
-  for (let i = 0; i < n; i++) {
-    const x = Math.random() * 256
-    const y = 30 + Math.random() * 120
-    const r = 24 + Math.random() * 52
-    const alpha = 0.05 + Math.random() * 0.12 * (0.4 + cloudAmount)
-    const rg = ctx.createRadialGradient(x, y, 0, x, y, r)
-    rg.addColorStop(0, `rgba(255,255,255,${alpha})`)
-    rg.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillRect(0, 0, S, S)
+
+  /* 太阳：位置在画面上方偏右，避开窗户正中的云 */
+  if (sun) {
+    const sx = S * 0.7
+    const sy = S * 0.22
+    // 大范围暖光晕（两层）
+    let rg = ctx.createRadialGradient(sx, sy, 0, sx, sy, S * 0.34)
+    rg.addColorStop(0, 'rgba(255,240,200,0.55)')
+    rg.addColorStop(1, 'rgba(255,240,200,0)')
     ctx.fillStyle = rg
     ctx.beginPath()
-    ctx.arc(x, y, r, 0, Math.PI * 2)
+    ctx.arc(sx, sy, S * 0.34, 0, Math.PI * 2)
+    ctx.fill()
+    rg = ctx.createRadialGradient(sx, sy, 0, sx, sy, S * 0.16)
+    rg.addColorStop(0, 'rgba(255,249,230,0.95)')
+    rg.addColorStop(1, 'rgba(255,249,230,0)')
+    ctx.fillStyle = rg
+    ctx.beginPath()
+    ctx.arc(sx, sy, S * 0.16, 0, Math.PI * 2)
+    ctx.fill()
+    // 放射光芒（细长渐变条，绕太阳一圈）
+    ctx.save()
+    ctx.translate(sx, sy)
+    for (let i = 0; i < 12; i++) {
+      ctx.rotate((Math.PI * 2) / 12)
+      const len = S * (0.13 + Math.random() * 0.07)
+      const ray = ctx.createLinearGradient(0, 0, 0, -len)
+      ray.addColorStop(0, 'rgba(255,246,215,0.5)')
+      ray.addColorStop(1, 'rgba(255,246,215,0)')
+      ctx.fillStyle = ray
+      ctx.beginPath()
+      ctx.moveTo(-S * 0.012, 0)
+      ctx.lineTo(S * 0.012, 0)
+      ctx.lineTo(0, -len)
+      ctx.closePath()
+      ctx.fill()
+    }
+    ctx.restore()
+    // 亮核
+    ctx.fillStyle = 'rgba(255,255,252,0.98)'
+    ctx.beginPath()
+    ctx.arc(sx, sy, S * 0.045, 0, Math.PI * 2)
     ctx.fill()
   }
+
+  /* 簇状云：一朵云由 3~6 个径向渐变圆叠成（底部略平，更接近真实云形） */
+  const n = Math.round(cloudAmount * 9)
+  for (let i = 0; i < n; i++) {
+    const cx = Math.random() * S
+    const cy = S * 0.08 + Math.random() * S * 0.34
+    const scale = 0.5 + Math.random() * 0.9
+    const puffs = 3 + Math.floor(Math.random() * 4)
+    const base = 0.1 + Math.random() * 0.1 * (0.4 + cloudAmount)
+    for (let p = 0; p < puffs; p++) {
+      const px = cx + (p - puffs / 2) * 30 * scale + (Math.random() * 18 - 9)
+      const py = cy + Math.random() * 22 * scale - 8
+      const r = (34 + Math.random() * 30) * scale
+      const rg = ctx.createRadialGradient(px, py, 0, px, py, r)
+      rg.addColorStop(0, `rgba(255,255,255,${base})`)
+      rg.addColorStop(0.7, `rgba(255,255,255,${base * 0.55})`)
+      rg.addColorStop(1, 'rgba(255,255,255,0)')
+      ctx.fillStyle = rg
+      ctx.beginPath()
+      ctx.arc(px, py, r, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+
   const t = new THREE.CanvasTexture(c)
   t.colorSpace = THREE.SRGBColorSpace
   return t
 }
 
-/* ---------- 窗外降水：雨丝（倾斜 ≈14.6°）/ 飘雪 ---------- */
+/* ---------- 柔和圆点贴图（雪花） / 光柱渐变 / 地板光斑（晴天阳光） ---------- */
+function createSoftDotTexture() {
+  const c = document.createElement('canvas')
+  c.width = c.height = 64
+  const ctx = c.getContext('2d')
+  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 30)
+  g.addColorStop(0, 'rgba(255,255,255,1)')
+  g.addColorStop(0.55, 'rgba(255,255,255,0.85)')
+  g.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, 64, 64)
+  return new THREE.CanvasTexture(c)
+}
+
+function createShaftTexture() {
+  const c = document.createElement('canvas')
+  c.width = 64
+  c.height = 256
+  const ctx = c.getContext('2d')
+  const g = ctx.createLinearGradient(0, 0, 0, 256)
+  g.addColorStop(0, 'rgba(255,255,255,0.9)') // 窗口端最亮
+  g.addColorStop(0.55, 'rgba(255,255,255,0.38)')
+  g.addColorStop(1, 'rgba(255,255,255,0)') // 地板端淡出
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, 64, 256)
+  // 左右两边也柔化，避免光柱出现硬边
+  const gx = ctx.createLinearGradient(0, 0, 64, 0)
+  gx.addColorStop(0, 'rgba(0,0,0,1)')
+  gx.addColorStop(0.25, 'rgba(0,0,0,0)')
+  gx.addColorStop(0.75, 'rgba(0,0,0,0)')
+  gx.addColorStop(1, 'rgba(0,0,0,1)')
+  ctx.globalCompositeOperation = 'destination-out'
+  ctx.fillStyle = gx
+  ctx.fillRect(0, 0, 64, 256)
+  ctx.globalCompositeOperation = 'source-over'
+  return new THREE.CanvasTexture(c)
+}
+
+function createPoolTexture() {
+  const c = document.createElement('canvas')
+  c.width = c.height = 256
+  const ctx = c.getContext('2d')
+  const g = ctx.createRadialGradient(128, 128, 0, 128, 128, 126)
+  g.addColorStop(0, 'rgba(255,255,255,0.95)')
+  g.addColorStop(0.5, 'rgba(255,255,255,0.45)')
+  g.addColorStop(1, 'rgba(255,255,255,0)')
+  ctx.fillStyle = g
+  ctx.fillRect(0, 0, 256, 256)
+  return new THREE.CanvasTexture(c)
+}
+
+/* ---------- 雪花单层：同层颗粒大小/速度/摆幅一致，多层叠加出远近景深 ---------- */
+function SnowLayer({ area, count, size, speed, swayF, swayA, opacity, tex }) {
+  const ref = useRef()
+  const state = useMemo(() => {
+    const pos = new Float32Array(count * 3)
+    const phase = new Float32Array(count)
+    const spd = new Float32Array(count)
+    for (let i = 0; i < count; i++) {
+      pos[i * 3] = area.x0 + Math.random() * (area.x1 - area.x0)
+      pos[i * 3 + 1] = area.y0 + Math.random() * (area.y1 - area.y0)
+      pos[i * 3 + 2] = area.z0 + Math.random() * (area.z1 - area.z0)
+      phase[i] = Math.random() * Math.PI * 2
+      spd[i] = 0.85 + Math.random() * 0.35
+    }
+    return { pos, phase, spd }
+  }, [count, area])
+  const posArr = useMemo(() => new Float32Array(count * 3), [count])
+
+  useFrame((_, dtRaw) => {
+    const dt = Math.min(dtRaw, 0.05) // 切标签页回来不要瞬移
+    const arr = ref.current?.geometry?.attributes?.position
+    if (!arr) return
+    const p = arr.array
+    const t = performance.now() / 1000
+    for (let i = 0; i < count; i++) {
+      const ix = i * 3
+      state.pos[ix + 1] -= speed * state.spd[i] * dt
+      // 水平摆动（sin 相位错开）+ 微微前后漂移，让雪“飘”起来
+      state.pos[ix] += Math.sin(t * swayF + state.phase[i]) * swayA * dt + speed * 0.12 * state.spd[i] * dt
+      state.pos[ix + 2] += Math.cos(t * 0.6 + state.phase[i]) * 0.045 * dt
+      if (state.pos[ix + 1] < area.y0) {
+        state.pos[ix + 1] = area.y1
+        state.pos[ix] = area.x0 + Math.random() * (area.x1 - area.x0)
+      }
+      if (state.pos[ix] > area.x1) state.pos[ix] = area.x0
+      p[ix] = state.pos[ix]
+      p[ix + 1] = state.pos[ix + 1]
+      p[ix + 2] = state.pos[ix + 2]
+    }
+    arr.needsUpdate = true
+  })
+
+  return (
+    <points ref={ref} frustumCulled={false}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" count={count} array={posArr} itemSize={3} />
+      </bufferGeometry>
+      <pointsMaterial map={tex} color="#ffffff" size={size} sizeAttenuation transparent opacity={opacity} depthWrite={false} />
+    </points>
+  )
+}
+
+/* ---------- 窗外降水：雨丝（倾斜 ≈14.6°）/ 三层雪花（小·中·大） ---------- */
 function Precipitation({ weather }) {
   const rainRef = useRef()
-  const snowRef = useRef()
   const stateRef = useRef(null)
 
   const isRain = weather === 'rain'
   const isSnow = weather === 'snow'
-  const count = isRain ? 380 : isSnow ? 240 : 0
+  const count = isRain ? 400 : 0
+  const dotTex = useMemo(createSoftDotTexture, [])
 
   /* 降水区域：窗外一薄层（玻璃 BACK_Z-0.02，雨在更外侧、天空面 BACK_Z-1.6 之前） */
   const AREA = useMemo(
@@ -191,105 +352,148 @@ function Precipitation({ weather }) {
       slant: 0.26, // 水平/垂直速度比 ≈ 14.6°：微微倾斜，不是垂直落地
       rainSpeed: 5.2, // 中小雨
       rainLen: 0.15,
-      snowSpeed: 0.55,
     }),
     []
   )
 
-  /* 粒子状态（位置 + 个体速度扰动 + 摆动相位） */
-  if (!stateRef.current || stateRef.current.count !== count || stateRef.current.kind !== weather) {
-    const s = { count, kind: weather, pos: null, phase: null, spd: null }
-    if (count) {
-      s.pos = new Float32Array(count * 3)
-      s.phase = new Float32Array(count)
-      s.spd = new Float32Array(count)
-      for (let i = 0; i < count; i++) {
-        s.pos[i * 3] = AREA.x0 + Math.random() * (AREA.x1 - AREA.x0)
-        s.pos[i * 3 + 1] = AREA.y0 + Math.random() * (AREA.y1 - AREA.y0)
-        s.pos[i * 3 + 2] = AREA.z0 + Math.random() * (AREA.z1 - AREA.z0)
-        s.phase[i] = Math.random() * Math.PI * 2
-        s.spd[i] = 0.8 + Math.random() * 0.45
-      }
+  /* 雨丝粒子状态 */
+  if (isRain && (!stateRef.current || stateRef.current.count !== count)) {
+    const s = { count, pos: new Float32Array(count * 3), phase: null, spd: new Float32Array(count) }
+    for (let i = 0; i < count; i++) {
+      s.pos[i * 3] = AREA.x0 + Math.random() * (AREA.x1 - AREA.x0)
+      s.pos[i * 3 + 1] = AREA.y0 + Math.random() * (AREA.y1 - AREA.y0)
+      s.pos[i * 3 + 2] = AREA.z0 + Math.random() * (AREA.z1 - AREA.z0)
+      s.spd[i] = 0.8 + Math.random() * 0.45
     }
     stateRef.current = s
   }
-
-  /* 雨丝几何：每滴两个端点（头 + 尾）；雪花：点 */
   const rainPos = useMemo(() => (count ? new Float32Array(count * 6) : null), [count])
-  const snowPos = useMemo(() => (count ? new Float32Array(count * 3) : null), [count])
 
   useFrame((_, dtRaw) => {
-    if (!count) return
-    const dt = Math.min(dtRaw, 0.05) // 切标签页回来不要瞬移
+    if (!isRain || !count) return
+    const dt = Math.min(dtRaw, 0.05)
     const st = stateRef.current
     const A = AREA
-    const t = performance.now() / 1000
-
-    if (isRain) {
-      const arr = rainRef.current?.geometry?.attributes?.position
-      if (!arr) return
-      const p = arr.array
-      for (let i = 0; i < count; i++) {
-        const ix = i * 3
-        st.pos[ix + 1] -= A.rainSpeed * st.spd[i] * dt
-        st.pos[ix] += A.rainSpeed * A.slant * st.spd[i] * dt
-        if (st.pos[ix + 1] < A.y0) {
-          st.pos[ix + 1] = A.y1
-          st.pos[ix] = A.x0 + Math.random() * (A.x1 - A.x0)
-        }
-        if (st.pos[ix] > A.x1) st.pos[ix] = A.x0
-        const hx = st.pos[ix]
-        const hy = st.pos[ix + 1]
-        const hz = st.pos[ix + 2]
-        const o = i * 6
-        p[o] = hx
-        p[o + 1] = hy
-        p[o + 2] = hz
-        p[o + 3] = hx - A.rainLen * A.slant // 尾端沿倾斜方向的反向
-        p[o + 4] = hy + A.rainLen
-        p[o + 5] = hz
+    const arr = rainRef.current?.geometry?.attributes?.position
+    if (!arr) return
+    const p = arr.array
+    for (let i = 0; i < count; i++) {
+      const ix = i * 3
+      st.pos[ix + 1] -= A.rainSpeed * st.spd[i] * dt
+      st.pos[ix] += A.rainSpeed * A.slant * st.spd[i] * dt
+      if (st.pos[ix + 1] < A.y0) {
+        st.pos[ix + 1] = A.y1
+        st.pos[ix] = A.x0 + Math.random() * (A.x1 - A.x0)
       }
-      arr.needsUpdate = true
-    } else if (isSnow) {
-      const arr = snowRef.current?.geometry?.attributes?.position
-      if (!arr) return
-      const p = arr.array
-      for (let i = 0; i < count; i++) {
-        const ix = i * 3
-        st.pos[ix + 1] -= A.snowSpeed * st.spd[i] * dt
-        const sway = Math.sin(t * 0.9 + st.phase[i]) * 0.16 * dt
-        st.pos[ix] += sway + A.snowSpeed * A.slant * 0.6 * st.spd[i] * dt
-        if (st.pos[ix + 1] < A.y0) {
-          st.pos[ix + 1] = A.y1
-          st.pos[ix] = A.x0 + Math.random() * (A.x1 - A.x0)
-        }
-        if (st.pos[ix] > A.x1) st.pos[ix] = A.x0
-        p[ix] = st.pos[ix]
-        p[ix + 1] = st.pos[ix + 1]
-        p[ix + 2] = st.pos[ix + 2]
-      }
-      arr.needsUpdate = true
+      if (st.pos[ix] > A.x1) st.pos[ix] = A.x0
+      const hx = st.pos[ix]
+      const hy = st.pos[ix + 1]
+      const hz = st.pos[ix + 2]
+      const o = i * 6
+      p[o] = hx
+      p[o + 1] = hy
+      p[o + 2] = hz
+      p[o + 3] = hx - A.rainLen * A.slant // 尾端沿倾斜方向的反向
+      p[o + 4] = hy + A.rainLen
+      p[o + 5] = hz
     }
+    arr.needsUpdate = true
   })
 
-  if (!count) return null
   if (isRain) {
     return (
       <lineSegments ref={rainRef} frustumCulled={false}>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" count={count * 2} array={rainPos} itemSize={3} />
         </bufferGeometry>
-        <lineBasicMaterial color="#dbe9f2" transparent opacity={0.55} depthWrite={false} />
+        <lineBasicMaterial color="#d5e6f2" transparent opacity={0.5} depthWrite={false} />
       </lineSegments>
     )
   }
+  if (isSnow) {
+    /* 三层：远处小雪密而慢 → 近处大雪疏而快，飘落有景深 */
+    return (
+      <group>
+        <SnowLayer area={AREA} tex={dotTex} count={140} size={0.02} speed={0.42} swayF={1.15} swayA={0.2} opacity={0.7} />
+        <SnowLayer area={AREA} tex={dotTex} count={80} size={0.042} speed={0.68} swayF={0.8} swayA={0.3} opacity={0.85} />
+        <SnowLayer area={AREA} tex={dotTex} count={34} size={0.075} speed={0.98} swayF={0.55} swayA={0.45} opacity={0.95} />
+      </group>
+    )
+  }
+  return null
+}
+
+/* ---------- 晴天专属：窗边阳光（斜射光柱 + 地板/桌面暖光斑，带轻微呼吸感） ---------- */
+function Sunlight({ weather }) {
+  const isSunny = weather === 'sunny'
+  const shaftTex = useMemo(createShaftTexture, [])
+  const poolTex = useMemo(createPoolTexture, [])
+  const wideRef = useRef()
+
+  useFrame(({ clock }) => {
+    // 光柱透明度轻微起伏，像窗外云慢慢飘过的感觉
+    const m = wideRef.current
+    if (m) m.material.opacity = 0.16 + Math.sin(clock.elapsedTime * 0.6) * 0.035
+  })
+
+  if (!isSunny) return null
   return (
-    <points ref={snowRef} frustumCulled={false}>
-      <bufferGeometry>
-        <bufferAttribute attach="attributes-position" count={count} array={snowPos} itemSize={3} />
-      </bufferGeometry>
-      <pointsMaterial color="#ffffff" size={0.035} sizeAttenuation transparent opacity={0.9} depthWrite={false} />
-    </points>
+    <group>
+      {/* 宽光柱：从窗口上方斜插到地板（rotation.x = -0.55 顶端贴窗沿） */}
+      <mesh ref={wideRef} position={[0.35, 1.32, -2.0]} rotation={[-0.55, 0, 0.06]}>
+        <planeGeometry args={[1.9, 3.1]} />
+        <meshBasicMaterial
+          map={shaftTex}
+          color="#ffe9bf"
+          transparent
+          opacity={0.16}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+          toneMapped={false}
+        />
+      </mesh>
+      {/* 窄亮光柱（第二道，角度略不同，层次感） */}
+      <mesh position={[-0.45, 1.35, -2.05]} rotation={[-0.55, 0, -0.05]}>
+        <planeGeometry args={[0.55, 3.0]} />
+        <meshBasicMaterial
+          map={shaftTex}
+          color="#fff3d6"
+          transparent
+          opacity={0.22}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          side={THREE.DoubleSide}
+          toneMapped={false}
+        />
+      </mesh>
+      {/* 地板光斑（窗前地板上的一片暖阳） */}
+      <mesh position={[0.45, 0.015, -1.4]} rotation={[-Math.PI / 2, 0, 0.12]}>
+        <planeGeometry args={[2.4, 1.75]} />
+        <meshBasicMaterial
+          map={poolTex}
+          color="#ffe7b8"
+          transparent
+          opacity={0.38}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+      {/* 桌面右侧的一小片暖光 */}
+      <mesh position={[0.45, DESK_TOP_Y + 0.035, DESK_Z]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[1.7, 0.55]} />
+        <meshBasicMaterial
+          map={poolTex}
+          color="#ffe7b8"
+          transparent
+          opacity={0.16}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+          toneMapped={false}
+        />
+      </mesh>
+    </group>
   )
 }
 
@@ -575,21 +779,223 @@ function CeilingLamp() {
   )
 }
 
+/* ---------- 踢脚线 + 顶角线（参考图：壳体厚边的收口感） ---------- */
+function Trims() {
+  const trim = <meshStandardMaterial color="#eae2d0" roughness={0.9} />
+  return (
+    <group>
+      {/* 后墙踢脚线（避让抽屉柜，贴墙即可） */}
+      <mesh position={[0, 0.06, BACK_Z + 0.09]} receiveShadow>
+        <boxGeometry args={[ROOM_W, 0.12, 0.03]} />
+        {trim}
+      </mesh>
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[s * (ROOM_W / 2 - 0.015), 0.06, 0]} receiveShadow>
+          <boxGeometry args={[0.03, 0.12, ROOM_D]} />
+          {trim}
+        </mesh>
+      ))}
+      {/* 顶角线 */}
+      <mesh position={[0, ROOM_H - 0.05, BACK_Z + 0.09]}>
+        <boxGeometry args={[ROOM_W, 0.1, 0.05]} />
+        {trim}
+      </mesh>
+      {[-1, 1].map((s) => (
+        <mesh key={`t${s}`} position={[s * (ROOM_W / 2 - 0.025), ROOM_H - 0.05, 0]}>
+          <boxGeometry args={[0.05, 0.1, ROOM_D]} />
+          {trim}
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/* ---------- 圆形地毯（参考图中部的圆毯） ---------- */
+function Rug() {
+  return (
+    <group position={[0.15, 0.012, 0.7]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <circleGeometry args={[1.12, 40]} />
+        <meshStandardMaterial color="#f2ebdb" roughness={1} />
+      </mesh>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.002, 0]}>
+        <ringGeometry args={[1.0, 1.08, 40]} />
+        <meshStandardMaterial color="#e3dac4" roughness={1} />
+      </mesh>
+    </group>
+  )
+}
+
+/* ---------- 布艺沙发（参考图：圆扶手 + 靠枕，放在房间左侧空位，朝向房间/镜头微倾） ---------- */
+function Sofa({ woodMap }) {
+  const cream = '#f1ead9'
+  return (
+    <group position={[-2.05, 0, -0.7]} rotation={[0, 0.55, 0]}>
+      {/* 底座 */}
+      <RoundedBox args={[1.5, 0.32, 0.75]} radius={0.07} smoothness={4} position={[0, 0.3, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color={cream} roughness={0.95} />
+      </RoundedBox>
+      {/* 坐垫 ×2 */}
+      {[-0.36, 0.36].map((x) => (
+        <RoundedBox key={x} args={[0.64, 0.15, 0.62]} radius={0.055} smoothness={4} position={[x, 0.52, 0.03]} castShadow>
+          <meshStandardMaterial color="#f6f0e2" roughness={0.95} />
+        </RoundedBox>
+      ))}
+      {/* 靠背（微微后仰） */}
+      <RoundedBox args={[1.5, 0.5, 0.18]} radius={0.07} smoothness={4} position={[0, 0.72, -0.29]} rotation={[-0.08, 0, 0]} castShadow>
+        <meshStandardMaterial color={cream} roughness={0.95} />
+      </RoundedBox>
+      {/* 扶手（圆角箱体 + 顶部的圆扶手卷） */}
+      {[-0.68, 0.68].map((x) => (
+        <group key={x}>
+          <RoundedBox args={[0.2, 0.38, 0.7]} radius={0.08} smoothness={4} position={[x, 0.52, 0]} castShadow>
+            <meshStandardMaterial color={cream} roughness={0.95} />
+          </RoundedBox>
+          <mesh position={[x, 0.74, 0]} rotation={[Math.PI / 2, 0, 0]} castShadow>
+            <cylinderGeometry args={[0.1, 0.1, 0.68, 16]} />
+            <meshStandardMaterial color={cream} roughness={0.95} />
+          </mesh>
+        </group>
+      ))}
+      {/* 靠枕 */}
+      <RoundedBox args={[0.36, 0.34, 0.12]} radius={0.05} smoothness={4} position={[-0.38, 0.68, -0.16]} rotation={[-0.25, 0.1, 0.06]} castShadow>
+        <meshStandardMaterial color="#f9f5ea" roughness={0.95} />
+      </RoundedBox>
+      {/* 短木腿 */}
+      {[
+        [-0.62, -0.26],
+        [0.62, -0.26],
+        [-0.62, 0.26],
+        [0.62, 0.26],
+      ].map(([x, z], i) => (
+        <mesh key={i} position={[x, 0.07, z]} castShadow>
+          <cylinderGeometry args={[0.025, 0.02, 0.14, 10]} />
+          <meshStandardMaterial map={woodMap} roughness={0.55} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/* ---------- 圆脚凳（参考图沙发前的方圆凳） ---------- */
+function Pouf() {
+  return (
+    <group position={[-1.15, 0, 0.55]}>
+      <RoundedBox args={[0.5, 0.3, 0.5]} radius={0.12} smoothness={4} position={[0, 0.19, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color="#f5efe1" roughness={0.95} />
+      </RoundedBox>
+    </group>
+  )
+}
+
+/* ---------- 小圆边几 + 两只茶杯（参考图沙发旁） ---------- */
+function SideTable() {
+  return (
+    <group position={[-2.55, 0, 0.75]}>
+      <mesh position={[0, 0.48, 0]} castShadow>
+        <cylinderGeometry args={[0.21, 0.21, 0.035, 24]} />
+        <meshStandardMaterial color={FURNITURE_CREAM} roughness={0.7} />
+      </mesh>
+      <mesh position={[0, 0.24, 0]} castShadow>
+        <cylinderGeometry args={[0.03, 0.04, 0.46, 12]} />
+        <meshStandardMaterial color={GOLD_METAL} roughness={0.4} metalness={0.5} />
+      </mesh>
+      <mesh position={[0, 0.02, 0]} castShadow>
+        <cylinderGeometry args={[0.12, 0.13, 0.04, 20]} />
+        <meshStandardMaterial color={FURNITURE_CREAM} roughness={0.85} />
+      </mesh>
+      {/* 两只小茶杯 */}
+      {[-0.07, 0.08].map((x, i) => (
+        <mesh key={i} position={[x, 0.52, i ? 0.05 : -0.04]} castShadow>
+          <cylinderGeometry args={[0.032, 0.026, 0.045, 14]} />
+          <meshStandardMaterial color="#ffffff" roughness={0.6} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/* ---------- 盆栽（参考图：沙发旁的观叶植物） ---------- */
+function PottedPlant() {
+  const leaves = [
+    { p: [0, 0.36, 0], r: [0, 0, 0] },
+    { p: [0.09, 0.32, 0.05], r: [0, 1.0, 0.5] },
+    { p: [-0.09, 0.33, -0.04], r: [0, 2.4, -0.5] },
+    { p: [0.04, 0.4, -0.07], r: [-0.45, 3.6, 0.2] },
+    { p: [-0.05, 0.38, 0.07], r: [0.45, 4.8, -0.3] },
+  ]
+  return (
+    <group position={[-2.7, 0, -2.4]}>
+      <mesh position={[0, 0.09, 0]} castShadow>
+        <cylinderGeometry args={[0.11, 0.085, 0.18, 18]} />
+        <meshStandardMaterial color="#f0e9d8" roughness={0.9} />
+      </mesh>
+      <mesh position={[0, 0.175, 0]}>
+        <cylinderGeometry args={[0.095, 0.095, 0.02, 18]} />
+        <meshStandardMaterial color="#8a7a63" roughness={1} />
+      </mesh>
+      {leaves.map((l, i) => (
+        <mesh key={i} position={l.p} rotation={l.r} castShadow>
+          <coneGeometry args={[0.05, 0.34, 8]} />
+          <meshStandardMaterial color={i % 2 ? '#a9bb9d' : '#b7c6a9'} roughness={0.95} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
+/* ---------- 右墙相框墙（参考图右侧的错落白框；完全平贴墙面，像粘在墙上一样） ---------- */
+function WallFrames() {
+  const frames = [
+    { z: -1.6, y: 2.25, w: 0.42, h: 0.32 },
+    { z: -0.95, y: 2.3, w: 0.3, h: 0.4 },
+    { z: -1.3, y: 1.75, w: 0.38, h: 0.48 },
+    { z: -0.55, y: 1.78, w: 0.32, h: 0.32 },
+    { z: -0.95, y: 2.68, w: 0.34, h: 0.26 },
+  ]
+  return (
+    <group>
+      {frames.map((f, i) => (
+        // rotation.y = -π/2：框面严格平行墙面（背面完全贴墙，绝不穿模）；x 留 1.5mm 缝防 z-fighting
+        <group key={i} position={[2.9815, f.y, f.z]} rotation={[0, -Math.PI / 2, 0]}>
+          <RoundedBox args={[f.w, f.h, 0.035]} radius={0.012} smoothness={3} castShadow>
+            <meshStandardMaterial color="#ece4d2" roughness={0.85} />
+          </RoundedBox>
+          {/* 空白相纸（比框面亮一点，接近参考图的“空框”效果） */}
+          <mesh position={[0, 0, 0.02]}>
+            <planeGeometry args={[f.w - 0.08, f.h - 0.08]} />
+            <meshStandardMaterial color="#fbf8f0" roughness={0.95} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  )
+}
+
 /* ---------- 房间整体（weather: 'sunny'|'cloudy'|'rain'|'snow'|''） ---------- */
 export function Room25DModel({ weather = '', ...props }) {
   const floorMap = useMemo(() => createWoodTexture([234, 214, 178]), [])
   const amberMap = useMemo(() => createWoodTexture([196, 152, 96], 'rgba(110,80,45,0.4)'), [])
   const marbleMap = useMemo(createMarbleTexture, [])
   const W = WEATHER[weather] || WEATHER_DEFAULT
-  const skyMap = useMemo(() => createSkyTexture(W.sky, W.cloud), [W])
+  const skyMap = useMemo(() => createSkyTexture(W.sky, W.cloud, W.sun), [W])
   return (
     <group {...props}>
       <Shell floorMap={floorMap} />
       <WindowWall skyMap={skyMap} lightColor={W.light} lightIntensity={W.intensity} />
+      <Sunlight weather={weather} />
       <Precipitation weather={weather} />
       <Desk marbleMap={marbleMap} />
       <Chair woodMap={amberMap} />
       <Bookshelf woodMap={amberMap} />
+      {/* 参考图新增：相框墙（右墙）+ 沙发区（左侧）+ 收边/圆毯 */}
+      <WallFrames />
+      <Sofa woodMap={amberMap} />
+      <Pouf />
+      <SideTable />
+      <PottedPlant />
+      <Rug />
+      <Trims />
       <CeilingLamp />
     </group>
   )
