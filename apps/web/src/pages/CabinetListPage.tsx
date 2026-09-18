@@ -10,12 +10,10 @@ import { periodTypeLabel, type CabinetVO, type PeriodType, type PalaceVO } from 
 import { cabinetApi } from '../api/cabinets';
 import { palaceApi } from '../api/palaces';
 import { useToast } from '../app/ToastContext';
-import { useIsDesktop } from '../hooks/useResponsive';
 import { CabinetCard } from '../features/cabinets/CabinetCard';
 import { Button } from '../components/ui/Button';
 import { PageHeader, PageLoading, Tabs, EmptyState } from '../components/ui/Misc';
-import { Sheet } from '../components/ui/Sheet';
-import { IconCamera, IconQr, IconScan, IconUsers } from '../components/ui/Icons';
+import { IconUsers } from '../components/ui/Icons';
 import { USE_MOCK } from '../api/http';
 import { buildPeriodKey } from '@shared/index';
 
@@ -30,13 +28,11 @@ const TABS = [
 export function CabinetListPage() {
   const { palaceId = '' } = useParams();
   const navigate = useNavigate();
-  const isDesktop = useIsDesktop();
   const { reportError, success } = useToast();
 
   const [palace, setPalace] = useState<PalaceVO | null>(null);
   const [cabinets, setCabinets] = useState<CabinetVO[] | null>(null);
   const [tab, setTab] = useState<PeriodTab>('monthly');
-  const [qrOpen, setQrOpen] = useState(false);
   const [creating, setCreating] = useState(false);
 
   const load = useCallback(async () => {
@@ -63,27 +59,6 @@ export function CabinetListPage() {
   );
 
   const periodKey = buildPeriodKey(tab);
-
-  /** 桌面端隐藏扫描入口，提示「请在手机端扫描」（§4.1 双端差异） */
-  const goScan = () => {
-    if (isDesktop) {
-      setQrOpen(true);
-      return;
-    }
-    navigate(
-      `/scan?type=cabinet&palace_id=${palaceId}&period_type=${tab}&period_key=${periodKey}`,
-    );
-  };
-
-  const goImport = () => {
-    if (isDesktop) {
-      setQrOpen(true);
-      return;
-    }
-    navigate(
-      `/scan?type=cabinet&mode=import&palace_id=${palaceId}&period_type=${tab}&period_key=${periodKey}`,
-    );
-  };
 
   /** Mock 环境下的临时直通：不等板块④管线也能验证 P3 → P4 的流转 */
   const createMockCabinet = async () => {
@@ -148,14 +123,11 @@ export function CabinetListPage() {
         ) : visible.length === 0 ? (
           <EmptyState
             title={`这个${periodTypeLabel(tab)}还空着`}
-            desc="拿出手机绕着柜子拍一圈，它会变成你宫殿里的一个角落。"
+            desc="扫描添加物品的功能在 3D 房间的物品栏里，点下方按钮进去看看。"
             action={
               <div className="cabinet-list__actions">
-                <Button onClick={goScan}>
-                  <IconScan size={18} /> 拍照扫描新展示柜
-                </Button>
-                <Button variant="secondary" onClick={goImport}>
-                  导入已有模型
+                <Button onClick={() => navigate('/memory-room3d')}>
+                  🏠 走进 3D 房间
                 </Button>
                 {USE_MOCK ? (
                   <Button variant="ghost" loading={creating} onClick={createMockCabinet}>
@@ -177,38 +149,16 @@ export function CabinetListPage() {
               ))}
             </div>
 
-            <div className="cabinet-list__actions cabinet-list__actions--bottom">
-              <Button variant="secondary" onClick={goScan}>
-                <IconCamera size={18} /> 拍照扫描新展示柜
-              </Button>
-              <Button variant="ghost" onClick={goImport}>
-                导入已有模型
-              </Button>
-              {USE_MOCK ? (
+            {USE_MOCK ? (
+              <div className="cabinet-list__actions cabinet-list__actions--bottom">
                 <Button variant="ghost" loading={creating} onClick={createMockCabinet}>
                   （Mock）先建一个空柜子
                 </Button>
-              ) : null}
-            </div>
+              </div>
+            ) : null}
           </>
         )}
       </div>
-
-      <Sheet open={qrOpen} onClose={() => setQrOpen(false)} title="扫描需要在手机上完成" width={420}>
-        <div className="scan-guide">
-          <div className="scan-guide__qr">
-            <IconQr size={64} />
-          </div>
-          <p className="muted" style={{ textAlign: 'center' }}>
-            用手机打开小角落，扫码进入这座宫殿，
-            <br />
-            就能把眼前的柜子拍成一整个 3D 角落。
-          </p>
-          <p className="faint" style={{ textAlign: 'center', fontSize: 'var(--fs-tiny)' }}>
-            电脑端可以摆放、查看、编辑简介，只有扫描拍照需要手机。
-          </p>
-        </div>
-      </Sheet>
     </div>
   );
 }
