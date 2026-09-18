@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+  <rect width="400" height="300" fill="#e8d9bd"/>
+  <rect y="120" width="400" height="180" fill="#a8763f"/>
+  <ellipse cx="130" cy="190" rx="58" ry="26" fill="#f5f0e2"/>
+  <ellipse cx="130" cy="184" rx="48" ry="18" fill="#d95f4b"/>
+  <ellipse cx="280" cy="205" rx="64" ry="28" fill="#5a7d8a"/>
+  <ellipse cx="280" cy="199" rx="52" ry="19" fill="#f0e2c0"/>
+  <rect x="180" y="130" width="42" height="52" rx="6" fill="#faf6ec"/>
+  <path d="M192 130 q10 -18 20 0" fill="#8a5a3a"/>
+  <text x="22" y="276" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#3d2c18">外婆家的午饭</text>
+</svg>

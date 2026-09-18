@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+  <defs>
+    <linearGradient id="n" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1d2b53"/>
+      <stop offset="1" stop-color="#0e1630"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#n)"/>
+  <rect x="70" y="70" width="260" height="170" rx="8" fill="#f5ef9e" opacity="0.92"/>
+  <rect x="70" y="70" width="260" height="46" rx="8" fill="#5fb89a"/>
+  <rect x="95" y="135" width="60" height="80" fill="#dfe8ef"/>
+  <rect x="180" y="135" width="120" height="12" fill="#c8d4dc"/>
+  <rect x="180" y="160" width="120" height="12" fill="#c8d4dc"/>
+  <rect x="180" y="185" width="90" height="12" fill="#c8d4dc"/>
+  <text x="22" y="276" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#e8ecf5">加班后的便利店</text>
+</svg>

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+  <rect width="400" height="300" fill="#2c2140"/>
+  <g>
+    <line x1="90" y1="0" x2="90" y2="52" stroke="#6b5a3a" stroke-width="3"/>
+    <ellipse cx="90" cy="82" rx="30" ry="34" fill="#e2543e"/>
+    <rect x="74" y="112" width="32" height="10" rx="4" fill="#d9a441"/>
+    <line x1="200" y1="0" x2="200" y2="72" stroke="#6b5a3a" stroke-width="3"/>
+    <ellipse cx="200" cy="102" rx="30" ry="34" fill="#e8a13c"/>
+    <rect x="184" y="132" width="32" height="10" rx="4" fill="#d9a441"/>
+    <line x1="310" y1="0" x2="310" y2="52" stroke="#6b5a3a" stroke-width="3"/>
+    <ellipse cx="310" cy="82" rx="30" ry="34" fill="#e2543e"/>
+    <rect x="294" y="112" width="32" height="10" rx="4" fill="#d9a441"/>
+  </g>
+  <path d="M0 220 L120 200 L240 225 L400 205 L400 300 L0 300 Z" fill="#1a1330"/>
+  <g fill="#f5d87a">
+    <rect x="60" y="238" width="14" height="10"/>
+    <rect x="140" y="246" width="14" height="10"/>
+    <rect x="230" y="240" width="14" height="10"/>
+    <rect x="320" y="248" width="14" height="10"/>
+  </g>
+  <text x="22" y="284" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#f0e8ff">夜市</text>
+</svg>

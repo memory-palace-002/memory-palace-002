@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+  <rect width="400" height="300" fill="#f2d8a0"/>
+  <path d="M40 90 L360 90 L330 140 L70 140 Z" fill="#d95f4b"/>
+  <path d="M70 140 L330 140 L300 190 L100 190 Z" fill="#f0ead8"/>
+  <path d="M100 190 L300 190 L270 240 L130 240 Z" fill="#d95f4b"/>
+  <circle cx="120" cy="255" r="16" fill="#8a5a3a"/>
+  <circle cx="200" cy="258" r="16" fill="#a8763f"/>
+  <circle cx="280" cy="255" r="16" fill="#8a5a3a"/>
+  <text x="22" y="276" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#5a3d22">周末早市</text>
+</svg>
