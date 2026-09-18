@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "小角落（原「回忆宫殿」）响应式前端 - 板块②宫殿与成员 / 板块⑤AI 聆听者",
+  "description": "小角落（原「回忆宫殿」）响应式前端 - 板块②宫殿与成员 / 板块⑤AI 聆听者 / 板块③④房间与柜子视图",
   "scripts": {
     "dev": "vite --host",
     "build": "tsc --noEmit && vite build",
@@ -11,14 +11,22 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "@huggingface/transformers": "^4.3.0",
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
+    "@supabase/supabase-js": "^2.116.0",
+    "onnxruntime-common": "^1.30.0",
+    "qrcode": "^1.5.4",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "react-router-dom": "^6.30.0",
+    "three": "^0.186.0",
+    "tslib": "^2.8.1",
     "zustand": "^4.5.7"
   },
   "devDependencies": {
-    "@types/react": "^18.3.11",
-    "@types/react-dom": "^18.3.1",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^4.3.4",
     "typescript": "^5.6.2",
     "vite": "^5.4.8"

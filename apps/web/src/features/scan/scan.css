@@ -1,0 +1,302 @@
+/**
+ * scan.css —— 跨设备扫描模块样式（作用域化）
+ *
+ * 来源：队友模块的 src/styles.css。集成时做了两处必要改动：
+ * 1. 剥离全局重置（* / body / button / .app* / .board*）——那些是 demo 壳的样式，
+ *    直接引入会覆盖主项目的字体、按钮与布局，属于"破坏现有环境"。
+ * 2. 通用类 .btn-primary / .btn-secondary 改名为 .scan-btn-*，
+ *    避免和主项目其他模块的同名类互相污染。
+ *
+ * 以下前缀全部归本模块所有，宿主不要复用：
+ *   scan-qr-*（二维码弹窗） / scan-page、scan-header、scan-card、camera-box、
+ *   scan-btn-*、scan-status、scan-error、scan-result、result-grid、scan-done
+ */
+
+/* ---------- 二维码弹窗（挂在 .mr3d-root 内，用 absolute 跟随房间层） ---------- */
+.scan-qr-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 26; /* 高于房间工具栏(8)与照片墙(12)，与回忆卡片同级 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(46, 32, 16, 0.42);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  animation: scan-fade 0.22s ease both;
+}
+
+@keyframes scan-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.scan-qr-card {
+  width: 340px;
+  max-width: calc(100vw - 48px);
+  padding: 24px 24px 20px;
+  border-radius: 18px;
+  text-align: center;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  background: linear-gradient(165deg, #fffdf6, #f6eedd);
+  border: 1px solid rgba(150, 120, 80, 0.3);
+  box-shadow: 0 20px 44px rgba(70, 50, 26, 0.34);
+  animation: scan-pop 0.26s cubic-bezier(0.22, 0.9, 0.3, 1.1) both;
+}
+
+@keyframes scan-pop {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.scan-qr-card h3 {
+  margin: 0 0 14px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #6b5436;
+}
+
+.scan-qr-img {
+  width: 216px;
+  height: 216px;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid rgba(150, 120, 80, 0.22);
+}
+
+.scan-qr-loading {
+  width: 216px;
+  height: 216px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  background: #f1e9d8;
+  color: #8a7757;
+  font-size: 12.5px;
+}
+
+.scan-qr-session {
+  margin: 12px 0 6px;
+  font-size: 11.5px;
+  color: #8a7757;
+}
+
+/* ---------- 二维码实际指向的地址 ---------- */
+.scan-qr-url {
+  margin: 0 0 4px;
+  padding: 7px 10px;
+  border-radius: 9px;
+  background: #f1e9d8;
+  color: #6b5a40;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  word-break: break-all;
+}
+
+/* ---------- 地址手机打不开时的提示 ---------- */
+.scan-qr-notice {
+  margin: 12px 0 10px;
+  padding: 10px 12px;
+  border-radius: 11px;
+  border: 1px solid #e0b98a;
+  background: #fdf3e3;
+  color: #7a5a2c;
+  font-size: 11.5px;
+  line-height: 1.75;
+  text-align: left;
+}
+
+.scan-qr-notice strong {
+  display: block;
+  margin-bottom: 2px;
+  color: #a8551f;
+}
+
+.scan-qr-notice code {
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: #f0e2cb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 10.5px;
+}
+
+/* loopback：一定打不开，语气更重 */
+.scan-qr-notice-loopback {
+  border-color: #dfa08d;
+  background: #fdece7;
+  color: #8a4030;
+}
+
+.scan-qr-notice-loopback strong {
+  color: #b23c26;
+}
+
+.scan-qr-notice-loopback code {
+  background: #f6dcd3;
+}
+
+.scan-qr-hint {
+  margin: 0 0 16px;
+  font-size: 11.5px;
+  line-height: 1.7;
+  color: #9c8a6b;
+}
+
+/* ---------- 通用按钮（本模块自有命名空间） ---------- */
+.scan-btn {
+  font: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 11px;
+  padding: 10px 18px;
+  font-size: 13px;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.scan-btn-primary {
+  color: #fff9ec;
+  font-weight: 700;
+  background: linear-gradient(160deg, #e4b96a, #cf9a4e);
+  box-shadow: 0 6px 16px rgba(150, 105, 45, 0.3);
+}
+
+.scan-btn-primary:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+  box-shadow: none;
+}
+
+.scan-btn-secondary {
+  color: #6b5436;
+  background: #f1e9d8;
+  border: 1px solid rgba(150, 120, 80, 0.3);
+}
+
+.scan-btn-secondary:hover {
+  background: #e9dec7;
+}
+
+/* ---------- 手机端拍摄页 ----------
+ * 主项目 index.css 把 #root 限宽 1126px 并居中、字号 18px，
+ * 手机页面用 fixed 全屏接管，避免继承这些约束。 */
+.scan-page {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  overflow-y: auto;
+  display: block;
+  padding: 20px 16px 40px;
+  text-align: left;
+  letter-spacing: normal;
+  font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  color: #1f2937;
+  background: #f7f4ee;
+  -webkit-overflow-scrolling: touch;
+}
+
+.scan-inner {
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.scan-header h2 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: normal;
+  color: #3d3226;
+}
+
+.scan-header p {
+  margin: 6px 0 16px;
+  font-size: 13px;
+  color: #8a7757;
+}
+
+.scan-card {
+  padding: 22px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.8;
+  background: #fffdf6;
+  border: 1px solid rgba(150, 120, 80, 0.24);
+}
+
+.camera-box {
+  border-radius: 14px;
+  overflow: hidden;
+  background: #111827;
+  aspect-ratio: 3 / 4;
+  border: 1px solid rgba(150, 120, 80, 0.24);
+}
+
+.camera-box video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.scan-btn-capture {
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px;
+  font-size: 16px;
+}
+
+.scan-status {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: #185fa5;
+}
+
+.scan-error {
+  margin: 10px 0 0;
+  font-size: 13px;
+  color: #a32d2d;
+}
+
+.scan-result {
+  margin-top: 24px;
+}
+
+.scan-result h3 {
+  margin: 0 0 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #3d3226;
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.result-grid img {
+  width: 100%;
+  border-radius: 8px;
+  filter: drop-shadow(3px 5px 8px rgba(96, 74, 52, 0.22));
+}
+
+.scan-done {
+  margin: 12px 0 0;
+  font-size: 13px;
+  color: #3b6d11;
+}

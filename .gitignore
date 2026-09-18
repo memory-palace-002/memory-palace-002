@@ -2,11 +2,32 @@ node_modules/
 dist/
 data/
 *.db
-.env
 .DS_Store
 *.local
 # 凭据：任何情况下都不进仓库
+.env
 .env.*
 !.env.example
 # 仅前端允许公开的样板
 apps/web/.env.example
+
+# ---- 以下为板块③④（feature-room-final）合并增量 ----
+build/
+*.log
+coverage/
+.vscode/
+.idea/
+.pnpm-store/
+node_modules.*.bak/
+_tmp_*
+
+# 独立打包产物（可由 vite.standalone.config.ts 重新生成）
+dist-standalone/
+# 临时日志/输出
+sc-exit.txt
+sc-code.txt
+sc-out.txt
+vite-code.txt
+vite-out.txt
+tsc-code.txt
+tsc-out.txt

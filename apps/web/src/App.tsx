@@ -22,12 +22,24 @@ import { ListenPage } from './pages/ListenPage';
 
 // 其它板块占位（归对应同学实现，乙不越界）
 import {
-  CabinetViewPage,
-  PlacePage,
-  ScanPage,
   SharedPage,
   NotFoundPage,
 } from './pages/StubPages';
+
+// 板块③/④ 房间与柜子视图（丁）：真实实现替换占位（2026-09-18 合并 feature-room-final）
+import { lazy, Suspense } from 'react';
+const CabinetViewScreen = lazy(() =>
+  import('./features/cabinet-view/CabinetViewScreen').then((m) => ({ default: m.CabinetViewScreen })),
+);
+const PlaceEditScreen = lazy(() =>
+  import('./features/place-edit/PlaceEditScreen').then((m) => ({ default: m.PlaceEditScreen })),
+);
+const ScanPageReal = lazy(() => import('./features/scan/pages/ScanPage'));
+const MemoryRoom3D = lazy(() => import('./features/memory-room3d/MemoryRoom3D'));
+
+function LazyFallback() {
+  return <div style={{ padding: 32, textAlign: 'center', color: 'var(--color-text-secondary)' }}>加载中…</div>;
+}
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const isLoggedIn = useAuthStore((s) => s.isLoggedIn());
@@ -92,10 +104,39 @@ export default function App() {
             }
           />
 
-          {/* 其它板块占位页（归对应同学，乙仅保留路由壳） */}
-          <Route path="/cabinets/:id/view" element={<CabinetViewPage />} />
-          <Route path="/cabinets/:id/place" element={<PlacePage />} />
-          <Route path="/scan" element={<ScanPage />} />
+          {/* 板块③/④ 柜子视图与摆放（丁的真实实现，替换原占位）+ 房间背景体验页 */}
+          <Route
+            path="/cabinets/:id/view"
+            element={
+              <Suspense fallback={<LazyFallback />}>
+                <CabinetViewScreen />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/cabinets/:id/place"
+            element={
+              <Suspense fallback={<LazyFallback />}>
+                <PlaceEditScreen />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/scan"
+            element={
+              <Suspense fallback={<LazyFallback />}>
+                <ScanPageReal />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/memory-room3d"
+            element={
+              <Suspense fallback={<LazyFallback />}>
+                <MemoryRoom3D />
+              </Suspense>
+            }
+          />
           <Route path="/shared" element={<SharedPage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Routes>

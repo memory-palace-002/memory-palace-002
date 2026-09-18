@@ -1,0 +1,348 @@
+/**
+ * RoomToolbar.css —— 左侧悬浮功能栏（四季 / 物品）
+ * 配色沿用房间的暖木色系：奶油底 #fffdf6~#f6eedd、琥珀强调 #cf9a4e、文字 #6b5436。
+ * 类名统一 rt- 前缀。
+ */
+
+.rt-root {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 8; /* 在画布虚化层(4)之上、照片墙(12)与各弹窗(20/30)之下 */
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  animation: rt-in 0.5s cubic-bezier(0.22, 0.9, 0.24, 1) both;
+}
+
+@keyframes rt-in {
+  from {
+    opacity: 0;
+    transform: translateY(-50%) translateX(-18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(-50%) translateX(0);
+  }
+}
+
+/* ---------- 竖排按钮条 ---------- */
+.rt-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px;
+  border-radius: 18px;
+  background: rgba(255, 252, 244, 0.9);
+  border: 1px solid rgba(150, 120, 80, 0.26);
+  box-shadow: 0 8px 22px rgba(80, 58, 30, 0.2);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.rt-btn {
+  width: 50px;
+  height: 54px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0;
+  border: none;
+  border-radius: 13px;
+  cursor: pointer;
+  color: #8a6f4a;
+  background: transparent;
+  transition: background 0.18s ease, color 0.18s ease, transform 0.18s ease;
+}
+
+.rt-btn:hover {
+  background: #f6eedd;
+  color: #a4713a;
+}
+
+.rt-btn-on {
+  background: linear-gradient(160deg, #f7e6c6, #f0d9ae);
+  color: #8a5a1e;
+}
+
+/* 已选季节时给四季按钮一点琥珀点亮 */
+.rt-btn-lit .rt-btn-t {
+  color: #a4713a;
+}
+
+.rt-btn-t {
+  font-size: 11px;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+/* ---------- 展开面板 ---------- */
+.rt-pane {
+  width: 268px;
+  padding: 12px 14px 13px;
+  border-radius: 16px;
+  background: linear-gradient(165deg, rgba(255, 253, 246, 0.97), rgba(246, 238, 221, 0.95));
+  border: 1px solid rgba(150, 120, 80, 0.28);
+  box-shadow: 0 16px 38px rgba(70, 50, 26, 0.28);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: rt-pane-in 0.26s cubic-bezier(0.22, 0.9, 0.3, 1.1) both;
+}
+
+@keyframes rt-pane-in {
+  from {
+    opacity: 0;
+    transform: translateX(-12px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.rt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.rt-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: #8a6f4a;
+}
+
+.rt-x {
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 10px;
+  line-height: 1;
+  color: #e8d9bd;
+  background: rgba(150, 120, 80, 0.55);
+  transition: background 0.16s ease;
+}
+
+.rt-x:hover {
+  background: #a4713a;
+}
+
+/* ---------- 四季面板 ---------- */
+.rt-seasons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.rt-season {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 10px 6px;
+  border-radius: 12px;
+  border: 1px solid rgba(150, 120, 80, 0.3);
+  background: #fffdf6;
+  color: #6b5436;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.rt-season:hover {
+  background: #f7efe0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(120, 90, 50, 0.16);
+}
+
+.rt-season-on {
+  border-color: #cf9a4e;
+  background: linear-gradient(160deg, #fbeccd, #f3ddb2);
+  box-shadow: inset 0 0 0 1px rgba(207, 154, 78, 0.5);
+  font-weight: 600;
+}
+
+/* 该季节的窗光色小圆点，一眼看出冷暖 */
+.rt-swatch {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1px solid rgba(120, 90, 50, 0.25);
+  flex: 0 0 auto;
+}
+
+/* ---------- 物品面板 ---------- */
+.rt-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.rt-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex: 1 1 0;
+  padding: 9px 8px;
+  border-radius: 11px;
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: background 0.16s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.rt-chip-strong {
+  font-weight: 700;
+  color: #a4713a;
+  border: 1px dashed rgba(180, 140, 90, 0.7);
+  background: #fffdf6;
+}
+
+.rt-chip-strong:hover {
+  background: #f8f0e0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(120, 90, 50, 0.16);
+}
+
+/* 预设物品：两列小卡 */
+.rt-presets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+  margin-top: 9px;
+  max-height: 244px;
+  overflow-y: auto;
+  padding-right: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(180, 140, 90, 0.45) transparent;
+}
+
+.rt-presets::-webkit-scrollbar {
+  width: 6px;
+}
+
+.rt-presets::-webkit-scrollbar-thumb {
+  background: rgba(180, 140, 90, 0.4);
+  border-radius: 999px;
+}
+
+.rt-preset {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 9px;
+  border-radius: 11px;
+  border: 1px solid rgba(150, 120, 80, 0.3);
+  background: #fffdf6;
+  color: #6b5436;
+  font-family: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.16s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.rt-preset:hover {
+  background: #f6eedd;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 10px rgba(120, 90, 50, 0.16);
+}
+
+.rt-preset:active {
+  transform: translateY(0);
+}
+
+.rt-preset-ico {
+  font-size: 15px;
+  line-height: 1;
+  flex: 0 0 auto;
+}
+
+.rt-preset-t {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- 跨设备扫码入口（物品面板内） ---------- */
+.rt-scan {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  width: 100%;
+  margin-top: 9px;
+  padding: 11px 10px;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff9ec;
+  background: linear-gradient(160deg, #e4b96a, #cf9a4e);
+  box-shadow: 0 6px 16px rgba(150, 105, 45, 0.28);
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.rt-scan:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 9px 20px rgba(150, 105, 45, 0.34);
+}
+
+.rt-scan:active {
+  transform: translateY(0);
+}
+
+/* 已经收到过资产：按钮转成沉稳的绿色，表示这条链路是通的 */
+.rt-scan-on {
+  background: linear-gradient(160deg, #9ec78a, #7fae67);
+  box-shadow: 0 6px 16px rgba(90, 130, 70, 0.3);
+}
+
+.rt-scan-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  min-width: 19px;
+  height: 19px;
+  padding: 0 5px;
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  color: #fff;
+  background: #a32d2d;
+  box-shadow: 0 2px 6px rgba(120, 30, 30, 0.35);
+}
+
+/* 同步状态 / 报错一行提示 */
+.rt-sync {
+  margin: 8px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #8a7757;
+}
+
+.rt-sync-err {
+  color: #a32d2d;
+}
+
+/* ---------- 面板底部说明 ---------- */
+.rt-tip {
+  margin: 10px 0 0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #8a7757;
+}
