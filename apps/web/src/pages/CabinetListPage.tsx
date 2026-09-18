@@ -124,6 +124,25 @@ export function CabinetListPage() {
       <div className="shell cabinet-list">
         <Tabs<PeriodTab> items={TABS} value={tab} onChange={setTab} full />
 
+        {/* 3D 房间体验入口（板块③④：四季光影房间 / 照片墙 / 摆放物件） */}
+        <button
+          className="paper-card"
+          style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            gap: 12, width: '100%', padding: '12px 16px', marginTop: 14,
+            cursor: 'pointer', textAlign: 'left', border: 'none', font: 'inherit',
+          }}
+          onClick={() => navigate('/memory-room3d')}
+        >
+          <span>
+            <span style={{ fontWeight: 500, fontSize: 15 }}>🏠 走进 3D 房间</span>
+            <span className="hint" style={{ display: 'block', marginTop: 2 }}>
+              四季光影 · 照片墙 · 摆放回忆物件
+            </span>
+          </span>
+          <span style={{ fontSize: 18, color: 'var(--color-primary-deep)' }}>→</span>
+        </button>
+
         {cabinets === null ? (
           <PageLoading />
         ) : visible.length === 0 ? (
