@@ -17,7 +17,7 @@ import LoginPage from './pages/Login';
 import MePage from './pages/Me';
 import HomePage from './pages/Home';
 import PalaceMembersPage from './pages/PalaceMembers';
-import PalacePlaceholderPage from './pages/PalacePlaceholder';
+import { CabinetListPage } from './pages/CabinetListPage';
 import { ListenPage } from './pages/ListenPage';
 
 // 其它板块占位（归对应同学实现，乙不越界）
@@ -71,7 +71,7 @@ export default function App() {
             path="/palaces/:id/cabinets"
             element={
               <AuthGuard>
-                <PalacePlaceholderPage />
+                <CabinetListPage />
               </AuthGuard>
             }
           />

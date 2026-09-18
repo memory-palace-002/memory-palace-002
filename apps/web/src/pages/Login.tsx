@@ -49,7 +49,7 @@ export default function LoginPage() {
     try {
       const { isNewUser } = await loginWithSms(phone, code);
       toast(isNewUser ? '注册成功，欢迎来到小角落' : '登录成功');
-      navigate('/me', { replace: true });
+      navigate('/palaces', { replace: true });
     } catch (e: any) {
       toast(e.message || '登录失败', 'error');
     } finally {

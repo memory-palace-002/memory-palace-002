@@ -114,6 +114,22 @@ export default function HomePage() {
         </button>
       </div>
 
+      {/* 3D 房间体验入口（板块③④：丁的房间背景 / 四季光影 / 照片墙） */}
+      <div
+        className="paper-card"
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          gap: 12, padding: '14px 16px', marginBottom: 24, cursor: 'pointer',
+        }}
+        onClick={() => navigate('/memory-room3d')}
+      >
+        <div>
+          <div style={{ fontWeight: 500, fontSize: 16 }}>🏠 走进我的 3D 房间</div>
+          <div className="hint" style={{ marginTop: 4 }}>四季光影 · 全屏照片墙 · 摆放你的回忆物件</div>
+        </div>
+        <span style={{ fontSize: 20, color: 'var(--color-primary-deep)' }}>→</span>
+      </div>
+
       {/* 角落卡片列表 */}
       {loading ? (
         <div className="hint">加载中…</div>
@@ -132,7 +148,7 @@ export default function HomePage() {
                 </span>
               </div>
               <div className="hint" style={{ marginTop: 8 }}>
-                👥 {p.member_count} 人 · 展示柜功能建设中
+                👥 {p.member_count} 人 · 点按进入展示柜
               </div>
               <div className="hint" style={{ marginTop: 2 }}>{fmtTime(p.updated_at)}</div>
             </div>
