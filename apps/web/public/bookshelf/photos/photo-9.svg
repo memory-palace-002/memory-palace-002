@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+  <rect width="400" height="300" fill="#e8cdb8"/>
+  <rect x="40" y="90" width="320" height="150" rx="14" fill="#f5efe2"/>
+  <rect x="40" y="90" width="120" height="150" rx="14" fill="#d98e8a"/>
+  <rect x="160" y="120" width="200" height="60" rx="10" fill="#b8cfe0"/>
+  <rect x="160" y="180" width="200" height="60" rx="10" fill="#f0e2c8"/>
+  <rect x="24" y="70" width="14" height="190" rx="6" fill="#8a5a3a"/>
+  <circle cx="330" cy="60" r="18" fill="#f5d87a"/>
+  <text x="22" y="276" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#5a3d34">暑假第一天的床</text>
+</svg>

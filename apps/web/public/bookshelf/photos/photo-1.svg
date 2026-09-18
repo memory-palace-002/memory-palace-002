@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff9a76"/>
+      <stop offset="0.55" stop-color="#e86a8a"/>
+      <stop offset="1" stop-color="#5b4a8a"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#sky)"/>
+  <circle cx="300" cy="120" r="42" fill="#fff3d6" opacity="0.95"/>
+  <path d="M0 235 L90 175 L170 225 L260 150 L340 220 L400 185 L400 300 L0 300 Z" fill="#2e2837" opacity="0.85"/>
+  <text x="22" y="276" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#fff" opacity="0.92">周五的晚霞</text>
+</svg>

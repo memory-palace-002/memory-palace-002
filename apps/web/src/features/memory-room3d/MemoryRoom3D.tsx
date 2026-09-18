@@ -24,6 +24,10 @@ import { SEASON_OPTIONS } from './Room25D'
 import { useItemPlacement, ItemPlacementScene, ItemPlacementOverlay } from './ItemPlacement'
 import { useScanSession } from '../scan/useScanSession'
 import QrModal from '../scan/components/QrModal'
+/* 记忆书柜（队友项目移植）：她的记忆书挂在同一个房间的书柜上，
+ * 交互（悬停抽书翻面 / 点击摊开阅读 / 拖物件取出落地）原样保留 */
+import { MemoryBookshelfScene, MemoryBookshelfOverlay } from '../memory-bookshelf/MemoryBookshelf'
+import { useBookshelf } from '../memory-bookshelf/store/bookshelf'
 import './MemoryRoom3D.css'
 
 type SeasonId = (typeof SEASON_OPTIONS)[number]['id']
@@ -47,15 +51,23 @@ export default function MemoryRoom3D() {
   )
   const scan = useScanSession(addScannedAsset)
 
+  /* 记忆书柜的「占用镜头」状态：摊开阅读中或拖拽取出物件时，冻结室内转头 */
+  const bkBusy = useBookshelf((s) => s.phase !== 'closed' || !!s.drag)
+
   return (
     <div className="mr3d-root">
-      {/* 房间背景（Canvas 在这里）；物品通过 children 注入到 Canvas 内部 */}
-      <RoomBackground weather={weather} season={season} cameraPaused={hp.dragging}>
+      {/* 房间背景（Canvas 在这里）；物品通过 children 注入到 Canvas 内部。
+          cameraPaused：物品拖拽 或 记忆书柜阅读/拖拽中 → 暂停转头 */}
+      <RoomBackground weather={weather} season={season} cameraPaused={hp.dragging || bkBusy}>
         <ItemPlacementScene hp={hp} />
+        <MemoryBookshelfScene />
       </RoomBackground>
 
       {/* 物品摆放的 HTML 层（弹窗 / 回忆卡片 / 进度） */}
       <ItemPlacementOverlay hp={hp} />
+
+      {/* 记忆书柜的 HTML 层（关闭/翻页/详情 + 拖拽收尾 + 阅读压暗遮罩） */}
+      <MemoryBookshelfOverlay />
 
       {/* 左侧悬浮功能栏：四季 + 物品栏（扫码入口在物品栏面板内） */}
       <RoomToolbar season={season} onSeasonChange={setSeason} hp={hp} scan={scan} />

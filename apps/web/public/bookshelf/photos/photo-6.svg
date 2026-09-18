@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+  <defs>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9fd4e8"/>
+      <stop offset="0.5" stop-color="#4f9cc4"/>
+      <stop offset="0.52" stop-color="#2f7aa8"/>
+      <stop offset="1" stop-color="#e8d8a8"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#sea)"/>
+  <circle cx="120" cy="70" r="34" fill="#fff6d8"/>
+  <path d="M60 160 q14 -8 28 0 M200 150 q14 -8 28 0 M310 168 q14 -8 28 0" stroke="#e8f4f8" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <text x="22" y="284" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#4a3d28">海边</text>
+</svg>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+  <defs>
+    <linearGradient id="g7" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#cfe3c2"/>
+      <stop offset="1" stop-color="#7fa86a"/>
+    </linearGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#g7)"/>
+  <path d="M0 210 L110 120 L190 190 L290 100 L400 200 L400 300 L0 300 Z" fill="#5a7d4a" opacity="0.85"/>
+  <path d="M0 250 L400 235 L400 300 L0 300 Z" fill="#6b8a55"/>
+  <path d="M170 300 C 180 250, 150 235, 190 205 C 230 235, 205 255, 230 300 Z" fill="#d9c9a3"/>
+  <circle cx="90" cy="70" r="26" fill="#fff6d8" opacity="0.9"/>
+  <text x="22" y="276" font-family="Microsoft YaHei, sans-serif" font-size="22" fill="#2f4225">山间步道</text>
+</svg>

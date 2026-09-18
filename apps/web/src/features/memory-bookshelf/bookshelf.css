@@ -1,0 +1,290 @@
+/* ============================================================
+ * 记忆书柜样式（移植自队友项目，全部类名加 bksh- 前缀）
+ * 不含任何全局 reset —— 本仓库有自己的全局样式，绝不能动。
+ * ============================================================ */
+
+/* 阅读时的氛围压暗：四周虚化+变暗，中间（摊开的书所在区域）留清晰的洞。
+ * 同 RoomBackground 抽屉虚化的做法，backdrop-filter 不影响指针事件。 */
+.bksh-dim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 4;
+  backdrop-filter: blur(9px) saturate(0.85);
+  -webkit-backdrop-filter: blur(9px) saturate(0.85);
+  background:
+    radial-gradient(ellipse 60% 54% at 50% 48%, rgba(28, 20, 12, 0.06) 0%, rgba(28, 20, 12, 0.5) 100%);
+  -webkit-mask-image: radial-gradient(ellipse 34% 30% at 50% 48%, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0) 55%, #000 100%);
+  mask-image: radial-gradient(ellipse 34% 30% at 50% 48%, rgba(0, 0, 0, 0) 0%, rgba(0, 0, 0, 0) 55%, #000 100%);
+  animation: bksh-fade-in 0.5s ease both;
+}
+
+@keyframes bksh-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* DOM 交互层: 根层不拦截, 只有具体控件可点 */
+.bksh-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+.bksh-overlay > * {
+  pointer-events: auto;
+}
+
+.bksh-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 18px;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 50%;
+  background: rgba(250, 246, 236, 0.92);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  color: #382f26;
+}
+.bksh-close-btn:hover {
+  background: #fff;
+}
+.bksh-close-btn:focus-visible,
+.bksh-pager button:focus-visible,
+.bksh-book-tools button:focus-visible,
+.bksh-capture-btn:focus-visible {
+  outline: 2px solid #785934;
+  outline-offset: 3px;
+}
+
+.bksh-pager {
+  position: absolute;
+  bottom: 26px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(250, 246, 236, 0.92);
+  padding: 8px 14px;
+  border-radius: 22px;
+}
+.bksh-pager button {
+  border: 0;
+  background: transparent;
+  font-size: 22px;
+  cursor: pointer;
+  color: #382f26;
+  padding: 0 8px;
+}
+.bksh-pager button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.bksh-pager span {
+  font-size: 12px;
+  color: #6b5c48;
+  min-width: 46px;
+  text-align: center;
+}
+
+.bksh-hint {
+  position: absolute;
+  bottom: 26px;
+  right: 22px;
+  background: rgba(56, 59, 48, 0.91);
+  color: #faf5e8;
+  font-size: 12px;
+  padding: 10px 16px;
+  border-radius: 20px;
+  pointer-events: none;
+}
+
+/* 书本上方的编辑工具条(3D Html 内) */
+.bksh-book-tools {
+  display: flex;
+  gap: 6px;
+  background: rgba(38, 30, 22, 0.88);
+  padding: 6px;
+  border-radius: 22px;
+  white-space: nowrap;
+  transform: translateY(-6px);
+}
+.bksh-book-tools button {
+  border: 0;
+  background: transparent;
+  color: #f3ead8;
+  font-size: 12px;
+  padding: 7px 12px;
+  border-radius: 16px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.bksh-book-tools button:hover {
+  background: rgba(255, 246, 230, 0.18);
+}
+
+/* 新建记忆入口 */
+.bksh-capture-btn {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  border: 0;
+  background: #a24e3d;
+  color: #fdf4e6;
+  font-size: 13px;
+  padding: 12px 18px;
+  border-radius: 22px;
+  cursor: pointer;
+  font-family: inherit;
+  box-shadow: 0 6px 18px rgba(90, 40, 24, 0.35);
+}
+.bksh-capture-btn:hover {
+  background: #b95c48;
+}
+
+/* 重命名面板 */
+.bksh-rename-panel {
+  position: absolute;
+  top: 90px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 8px;
+  background: rgba(250, 246, 236, 0.97);
+  padding: 12px 14px;
+  border-radius: 16px;
+  box-shadow: 0 10px 30px rgba(40, 28, 16, 0.25);
+}
+.bksh-rename-panel input {
+  border: 1px solid #c9b99d;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 14px;
+  width: 180px;
+  font-family: inherit;
+  outline: none;
+}
+.bksh-rename-panel input:focus {
+  border-color: #785934;
+}
+.bksh-rename-panel button,
+.bksh-modal .bksh-actions button {
+  border: 1px solid #c9b99d;
+  background: transparent;
+  border-radius: 10px;
+  padding: 8px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  color: #382f26;
+}
+.bksh-rename-panel button.bksh-primary,
+button.bksh-primary {
+  border: 0;
+  background: #5d7a4c;
+  color: #fdf6e8;
+}
+
+/* 物品详情弹窗 */
+.bksh-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(24, 18, 14, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bksh-modal {
+  position: relative;
+  width: min(430px, calc(100% - 48px));
+  max-height: calc(100% - 90px);
+  overflow: auto;
+  background: #faf6ec;
+  border-radius: 18px;
+  padding: 30px 28px;
+  box-shadow: 0 24px 70px rgba(20, 12, 6, 0.45);
+}
+.bksh-modal img {
+  width: 100%;
+  max-height: 300px;
+  object-fit: contain;
+  border-radius: 10px;
+  background: #f0e8d4;
+  margin-bottom: 16px;
+}
+.bksh-modal h2 {
+  margin: 0 0 12px;
+  font-size: 21px;
+  font-weight: 600;
+}
+.bksh-modal .bksh-meta p {
+  margin: 4px 0;
+  font-size: 13px;
+  color: #6b5c48;
+  line-height: 1.7;
+}
+.bksh-modal .bksh-note-body {
+  font-size: 15px;
+  line-height: 2;
+  color: #4a3c2c;
+  white-space: pre-wrap;
+  background: #fbf3dd;
+  border-radius: 10px;
+  padding: 16px 18px;
+  margin: 0 0 14px;
+}
+.bksh-modal-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 34px;
+  height: 34px;
+  font-size: 18px;
+  background: rgba(250, 246, 236, 0.7);
+}
+.bksh-voice-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #2c2140;
+  color: #f3ead8;
+  border-radius: 12px;
+  padding: 14px 18px;
+  margin-bottom: 16px;
+}
+.bksh-voice-preview .bksh-voice-play {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: #f3ead8;
+  color: #2c2140;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+.bksh-voice-preview em {
+  font-style: normal;
+  font-size: 11px;
+  opacity: 0.6;
+}
+.bksh-modal .bksh-actions {
+  margin-top: 18px;
+  display: flex;
+  gap: 10px;
+}
+
+@media (max-width: 600px) {
+  .bksh-hint {
+    display: none;
+  }
+  .bksh-capture-btn {
+    top: 12px;
+    right: 12px;
+    padding: 10px 14px;
+  }
+}

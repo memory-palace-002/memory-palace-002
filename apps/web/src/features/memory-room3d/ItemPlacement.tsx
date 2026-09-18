@@ -133,6 +133,12 @@ const SHELF_BUILTIN: Record<number, Array<[number, number]>> = {
   1: [[SHELF.cx - 0.475, SHELF.cx - 0.345]], // 第 2 层左侧两本
 }
 
+/* ===== 记忆书柜（features/memory-bookshelf）整层预留 =====
+ * 队友的记忆书固定放在书柜自上而下的第 3、4 层（y = 1.55 / 2.05，居中），
+ * 这两层对下面的排架算法整体封锁；用户放书用下面两层（第 1、2 层），
+ * 两边共用同一个柜子但永不穿模。 */
+const BOOKSHELF_RESERVED_ROWS: ReadonlySet<number> = new Set([2, 3])
+
 type Interval = [number, number]
 
 /* 书本是否落在书柜区域内 */
@@ -156,8 +162,9 @@ function shelfRowIndex(y: number): number {
 /* 上架时书本的缩放：不得小于 1，也不得大到顶穿上层板或探出柜体 */
 const shelfScale = (b: { scale?: number }) => clamp(b.scale || 1, 1, BOOK_MAX_SCALE)
 
-/* 某层剩余的空隙区间（扣掉装饰书和已放的书） */
+/* 某层剩余的空隙区间（扣掉装饰书、已放的书和记忆书柜预留层） */
 function freeSegments(row: number, occupied: Interval[]): Interval[] {
+  if (BOOKSHELF_RESERVED_ROWS.has(row)) return [] // 记忆书柜预留层：整层不让用户放书
   const left = SHELF.cx - SHELF.innerHalf
   const right = SHELF.cx + SHELF.innerHalf
   const blocks = [...(SHELF_BUILTIN[row] || []), ...occupied].sort((a, b) => a[0] - b[0])
