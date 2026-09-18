@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# vite 临时文件
+vite.config.ts.timestamp-*.mjs
