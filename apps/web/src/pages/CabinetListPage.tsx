@@ -122,7 +122,7 @@ export function CabinetListPage() {
       />
 
       <div className="shell cabinet-list">
-        <Tabs items={TABS} value={tab} onChange={setTab} full />
+        <Tabs<PeriodTab> items={TABS} value={tab} onChange={setTab} full />
 
         {cabinets === null ? (
           <PageLoading />

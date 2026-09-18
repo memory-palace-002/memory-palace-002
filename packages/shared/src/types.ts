@@ -46,6 +46,8 @@ export interface PalaceVO {
   item_count: number;
   cover_thumbnail_url: string | null;
   updated_at: string;
+  /** 建宫殿时间（后端可能不返回，可选） */
+  created_at?: string;
   /** 前端派生字段（可选）：当前用户在宫殿中的角色 */
   role?: PalaceRole;
   member_count?: number;
