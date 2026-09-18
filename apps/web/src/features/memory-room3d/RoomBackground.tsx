@@ -19,8 +19,9 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { Room25DModel, DESK_DRAWER } from './Room25D'
+import { Room25DModel, DESK_DRAWER, SEASON_OPTIONS, WALL_FRAME_X, WALL_FRAMES } from './Room25D'
 import DrawerFolder from './DrawerFolder'
+import PhotoWall, { loadWallPhotos } from './PhotoWall'
 
 /* ---------- 视角关键位姿 ---------- */
 /* 鸟瞰：高空斜俯视，能看全地板 + 后墙 + 两侧墙（天花板是单面材质，从上方自动不可见） */
@@ -46,12 +47,37 @@ const DRAWER_VIEW = {
   fov: 52,
 }
 
+/* 照片墙：镜头推到右墙相框墙正前方。
+ * 画面中心由 Room25D 导出的 WALL_FRAMES（错落相框的整体包围盒）推导，
+ * 改相框位置/数量时镜头会自动跟着走。
+ * 距离 2.9 / 视线压低 0.25 是算过的：5 个相框在屏幕上落在竖直 10.7%~66.6%、
+ * 水平 32.8%~67.0%（16:9~4:3 都完整入画），正好在底部照片墙面板上方，
+ * 相框占屏高约 56%，既够醒目又不会被面板挡住。 */
+const WALL_BOX = WALL_FRAMES.reduce(
+  (a, f) => ({
+    zMin: Math.min(a.zMin, f.z - f.w / 2),
+    zMax: Math.max(a.zMax, f.z + f.w / 2),
+    yMin: Math.min(a.yMin, f.y - f.h / 2),
+    yMax: Math.max(a.yMax, f.y + f.h / 2),
+  }),
+  { zMin: Infinity, zMax: -Infinity, yMin: Infinity, yMax: -Infinity }
+)
+const WALL_CZ = (WALL_BOX.zMin + WALL_BOX.zMax) / 2
+const WALL_CY = (WALL_BOX.yMin + WALL_BOX.yMax) / 2
+const WALL_VIEW = {
+  pos: new THREE.Vector3(WALL_FRAME_X - 2.9, WALL_CY + 0.06, WALL_CZ + 0.02),
+  target: new THREE.Vector3(WALL_FRAME_X, WALL_CY - 0.25, WALL_CZ),
+  fov: 44,
+}
+
 /* 推进曲线的控制点：让镜头从房间正前方（没有墙的那一面）低空俯冲进来，
  * 既不会穿过天花板，也不会从墙里穿过去 */
 const FLY_CTRL = new THREE.Vector3(0.6, 1.7, 3.2)
 const FLY_DURATION = 2.4 // 秒
 /* 室内 ↔ 抽屉：距离短，1.1s 够用且不拖沓 */
 const DRAWER_FLY_DURATION = 1.1 // 秒
+/* 室内 ↔ 照片墙：从房中间推到右墙，距离比抽屉远，给 1.2s 让推进更「丝滑」 */
+const WALL_FLY_DURATION = 1.2 // 秒
 
 /* 转头参数（只有按住鼠标左键在画布上拖动才生效，松开后视角固定不动）
  * 左键同时用于「选中/打开回忆卡片」和「拖动物品」，所以加了三重防护：
@@ -70,7 +96,7 @@ const DRAG_THRESHOLD = 4 // px：位移超过这个距离才算「拖动转头�
 /* 鸟瞰时的鼠标视差幅度 */
 const PARALLAX = { x: 0.35, y: 0.18 }
 
-type Phase = 'overview' | 'entering' | 'indoor' | 'drawer'
+type Phase = 'overview' | 'entering' | 'indoor' | 'drawer' | 'wall'
 
 type View = { pos: THREE.Vector3; target: THREE.Vector3; fov: number }
 
@@ -82,6 +108,7 @@ function viewQuaternion(v: View): THREE.Quaternion {
   return new THREE.Quaternion().setFromRotationMatrix(_lookMat)
 }
 const DRAWER_Q = viewQuaternion(DRAWER_VIEW)
+const WALL_Q = viewQuaternion(WALL_VIEW)
 
 const easeInOutCubic = (u: number) => (u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2)
 
@@ -207,7 +234,16 @@ function CinematicRig({
     }
     /* entering 结束时已经落到室内了，不要再飞一次（否则会多出一段 0 距离的等待） */
     if (phase === 'indoor' && prev === 'entering') return
-    startFly(phase === 'drawer' ? DRAWER_VIEW : IN, DRAWER_FLY_DURATION, null)
+    /* 抽屉 / 照片墙：各自用自己的一套目标视角与时长；其余情况回室内 */
+    if (phase === 'drawer') {
+      startFly(DRAWER_VIEW, DRAWER_FLY_DURATION, null)
+      return
+    }
+    if (phase === 'wall') {
+      startFly(WALL_VIEW, WALL_FLY_DURATION, null)
+      return
+    }
+    startFly(IN, DRAWER_FLY_DURATION, null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [phase])
 
@@ -285,6 +321,17 @@ function CinematicRig({
       return
     }
 
+    /* ③′ 照片墙：定在相框墙正前方，同样不再响应转头 */
+    if (phase === 'wall') {
+      if (camera.fov !== WALL_VIEW.fov) {
+        camera.fov = WALL_VIEW.fov
+        camera.updateProjectionMatrix()
+      }
+      camera.position.copy(WALL_VIEW.pos)
+      camera.quaternion.copy(WALL_Q)
+      return
+    }
+
     /* ④ 室内：站位固定，只有拖动改变 aim；松手后 aim 不变，视角就固定住 */
     if (!paused) {
       look.current.yaw = THREE.MathUtils.damp(look.current.yaw, aim.current.yaw, LOOK_LAMBDA, dt)
@@ -314,15 +361,26 @@ const WEATHER_LIGHT: Record<string, { ambient: number; dir: number; tint: string
   snow: { ambient: 0.8, dir: 0.5, tint: '#eaf1f6' },
 }
 
-function WeatherLights({ weather }: { weather: string }) {
+function WeatherLights({
+  weather,
+  seasonLight,
+}: {
+  weather: string
+  seasonLight?: (typeof SEASON_OPTIONS)[number]
+}) {
   const W = WEATHER_LIGHT[weather] ?? { ambient: 0.8, dir: 0.9, tint: '#fff4e6' }
+  /* 四季优先：选了季节时，环境光/主光的强度与色调都随季节走（春清爽、夏炽烈、秋暖橙、冬冷暗） */
+  const ambient = seasonLight ? seasonLight.ambient : W.ambient
+  const ambientColor = seasonLight ? seasonLight.ambientColor : '#fff4e6'
+  const dir = seasonLight ? seasonLight.dir : W.dir
+  const tint = seasonLight ? seasonLight.light : W.tint
   return (
     <>
-      <ambientLight intensity={W.ambient} color="#fff4e6" />
+      <ambientLight intensity={ambient} color={ambientColor} />
       <directionalLight
         position={[2.5, 5, 4]}
-        intensity={W.dir}
-        color={W.tint}
+        intensity={dir}
+        color={tint}
         castShadow
         shadow-mapSize={[2048, 2048]}
         shadow-camera-left={-5}
@@ -369,6 +427,21 @@ const BLUR_STYLE: CSSProperties = {
   animation: 'mr3d-fade-in .55s ease both',
 }
 
+/* ---------- 照片墙时的背景虚化 ----------
+ * 和抽屉不同：这里前景是一整块底部面板，不需要在中间留「清晰的洞」，
+ * 所以整屏虚化 + 压暗，形成明显的景深聚焦（房间退成背景）。 */
+const WALL_BLUR_STYLE: CSSProperties = {
+  position: 'absolute',
+  inset: 0,
+  pointerEvents: 'none',
+  zIndex: 4,
+  backdropFilter: 'blur(11px) saturate(0.88)',
+  WebkitBackdropFilter: 'blur(11px) saturate(0.88)',
+  background:
+    'radial-gradient(ellipse 78% 72% at 50% 42%, rgba(28,20,12,0.16) 0%, rgba(28,20,12,0.52) 100%)',
+  animation: 'mr3d-fade-in .5s ease both',
+}
+
 /* 弹窗容器：水平居中，垂直略偏下（给上方抽屉留空间） */
 const POPUP_WRAP_STYLE: CSSProperties = {
   position: 'absolute',
@@ -393,25 +466,49 @@ const DRAWER_HINT_STYLE: CSSProperties = {
   zIndex: 5,
 }
 
+/* 相框墙提示：放右下角，和底部中间那两条提示错开，互不遮拦 */
+const WALL_HINT_STYLE: CSSProperties = {
+  position: 'absolute',
+  right: 14,
+  bottom: '4%',
+  padding: '6px 16px',
+  borderRadius: 999,
+  background: 'rgba(61, 52, 40, 0.35)',
+  color: '#fffaf0',
+  fontSize: 12,
+  letterSpacing: 1,
+  pointerEvents: 'none',
+  zIndex: 5,
+}
+
 /* ---------- 房间背景 ----------
  * weather        天气（sunny | cloudy | rain | snow | ''）
+ * season         四季（'spring'|'summer'|'autumn'|'winter'|''），由父级持有（左侧功能栏切换）
  * cameraPaused   物品拖拽中 → 暂停转头（由物品侧传入，本组件不关心来源）
  * children       物品/贴片的 3D 挂载点（由父级 ItemPlacementScene 注入）
  */
 export default function RoomBackground({
   weather = '',
+  season = '',
   cameraPaused = false,
   children,
 }: {
   weather?: string
+  season?: string
   cameraPaused?: boolean
   children?: ReactNode
 }) {
   const [base, setBase] = useState<Phase>('overview') // 鸟瞰 / 推进中 / 室内
   const [drawerOpen, setDrawerOpen] = useState(false) // 抽屉是否拉出
   const [looked, setLooked] = useState(false) // 用户是否已经拖动转过头
-  /* 抽屉拉出时镜头切到抽屉俯视，合上后回到室内 */
-  const phase: Phase = drawerOpen ? 'drawer' : base
+  /* 四季的窗光/明暗参数（切换入口在左侧悬浮功能栏 RoomToolbar） */
+  const seasonLight = SEASON_OPTIONS.find((s) => s.id === season)
+  /* 照片墙：点右墙相框进入。framePhotos 与 PhotoWall 共用同一份 localStorage 数据，
+   * 前 5 张会被贴到房间的相框上（Room25D 的 WallFrames） */
+  const [wallOpen, setWallOpen] = useState(false)
+  const [framePhotos, setFramePhotos] = useState<string[]>(loadWallPhotos)
+  /* 抽屉拉出时镜头切到抽屉俯视，打开照片墙时切到相框墙；都关上后回到室内 */
+  const phase: Phase = drawerOpen ? 'drawer' : wallOpen ? 'wall' : base
 
   /* 文件夹弹窗的三段式状态（闭合/扇形/手账页）由 DrawerFolder 内部管理，
    * 这里只负责把整个抽屉连同弹窗一起收起。 */
@@ -440,12 +537,22 @@ export default function RoomBackground({
         style={{ position: 'absolute', inset: 0, cursor: phase === 'overview' ? 'pointer' : 'default' }}
         gl={{ toneMappingExposure: 1.0 }}
       >
-        <color attach="background" args={['#f4efe6']} />
-        <WeatherLights weather={weather} />
+        <color attach="background" args={[seasonLight ? seasonLight.bg : '#f4efe6']} key={seasonLight ? seasonLight.id : 'default'} />
+        <WeatherLights weather={weather} seasonLight={seasonLight} />
         <Room25DModel
           weather={weather}
+          season={season}
           drawerOpen={drawerOpen}
-          onDrawerToggle={() => (drawerOpen ? closeDrawer() : setDrawerOpen(true))}
+          onDrawerToggle={() => {
+            if (wallOpen) return // 照片墙开着时不响应抽屉，避免两个前景态互相打架
+            drawerOpen ? closeDrawer() : setDrawerOpen(true)
+          }}
+          framePhotos={framePhotos}
+          onFrameClick={() => {
+            /* 只在「站在房间里」时响应：鸟瞰/推进中/已在抽屉或照片墙里都不重复触发 */
+            if (drawerOpen || wallOpen || base !== 'indoor') return
+            setWallOpen(true)
+          }}
         />
         {children}
         <CinematicRig
@@ -469,6 +576,12 @@ export default function RoomBackground({
       {phase === 'overview' && <div style={HINT_STYLE}>点击进入房间</div>}
       {phase === 'indoor' && !looked && <div style={HINT_STYLE}>按住鼠标左键拖动转头</div>}
       {phase === 'indoor' && !drawerOpen && <div style={DRAWER_HINT_STYLE}>点击书桌抽屉可以拉开</div>}
+      {phase === 'indoor' && <div style={WALL_HINT_STYLE}>点击右侧相框墙 → 照片墙</div>}
+
+      {/* 照片墙：整屏虚化 + 底部照片墙面板（镜头由 CinematicRig 的 'wall' 阶段推进） */}
+      {phase === 'wall' && <div style={WALL_BLUR_STYLE} />}
+      {phase === 'wall' && <PhotoWall onClose={() => setWallOpen(false)} onPhotosChange={setFramePhotos} />}
+
       <style>{`@keyframes mr3d-hint-pulse { 0%,100% { opacity: .55 } 50% { opacity: 1 } }
 @keyframes mr3d-fade-in { from { opacity: 0 } to { opacity: 1 } }`}</style>
     </>

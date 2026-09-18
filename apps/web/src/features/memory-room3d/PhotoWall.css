@@ -1,0 +1,347 @@
+/**
+ * PhotoWall.css —— 全屏滚动照片墙样式（深色画廊，参考用户提供的截图）
+ * 深色底 + 瀑布流多列照片，默认压暗，鼠标滑过放大并变亮。
+ * 类名统一 pw- 前缀。
+ */
+
+.pw-root {
+  position: absolute;
+  inset: 0;
+  z-index: 12; /* 压过画布虚化层(4)和物品栏/上传/提示(10) */
+  display: flex;
+  flex-direction: column;
+  background: rgba(14, 12, 11, 0.94);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: pw-fade 0.45s ease both;
+}
+
+@keyframes pw-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* ---------- 顶栏（固定，不随内容滚动） ---------- */
+.pw-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 28px 12px;
+}
+
+.pw-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: #f3ead9;
+}
+
+.pw-count {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(217, 165, 95, 0.2);
+  color: #d9a55f;
+  font-size: 12px;
+  font-weight: 400;
+  letter-spacing: 0;
+}
+
+.pw-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.pw-add {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: #2c2013;
+  background: linear-gradient(160deg, #e8bd7d 0%, #d9a55f 60%, #c9974f 100%);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+  transition: transform 0.16s ease, box-shadow 0.16s ease, filter 0.16s ease;
+}
+
+.pw-add:hover {
+  transform: translateY(-1px);
+  filter: brightness(1.06);
+  box-shadow: 0 9px 20px rgba(0, 0, 0, 0.5);
+}
+
+.pw-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  color: #f3ead9;
+  background: rgba(255, 250, 240, 0.14);
+  transition: background 0.16s ease;
+}
+
+.pw-close:hover {
+  background: rgba(255, 250, 240, 0.26);
+}
+
+/* ---------- 滚动区 ---------- */
+.pw-scroll {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 28px 22px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(217, 165, 95, 0.4) transparent;
+}
+
+.pw-scroll::-webkit-scrollbar {
+  width: 8px;
+}
+
+.pw-scroll::-webkit-scrollbar-thumb {
+  background: rgba(217, 165, 95, 0.35);
+  border-radius: 999px;
+}
+
+/* ---------- 瀑布流（CSS 多列，照片保持原始比例） ---------- */
+.pw-masonry {
+  column-count: 5;
+  column-gap: 14px;
+}
+
+@media (max-width: 1280px) {
+  .pw-masonry {
+    column-count: 4;
+  }
+}
+
+@media (max-width: 960px) {
+  .pw-masonry {
+    column-count: 3;
+  }
+}
+
+@media (max-width: 640px) {
+  .pw-masonry {
+    column-count: 2;
+  }
+}
+
+.pw-cell {
+  position: relative;
+  display: block;
+  break-inside: avoid;
+  margin: 0 0 14px;
+  padding: 0;
+  border: none;
+  border-radius: 14px;
+  overflow: hidden;
+  background: #1c1815;
+  /* 默认压暗（参考图里未悬停的照片都偏暗），滑过时放大 + 变亮 */
+  filter: brightness(0.42) saturate(0.85);
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
+  cursor: grab;
+  transition:
+    transform 0.28s cubic-bezier(0.22, 0.9, 0.3, 1.15),
+    filter 0.28s ease,
+    box-shadow 0.28s ease;
+  /* figure 默认 margin 已清，确保列内流式布局正确 */
+  -webkit-column-break-inside: avoid;
+}
+
+.pw-cell:hover {
+  filter: brightness(1.05) saturate(1.05);
+  transform: scale(1.06);
+  z-index: 3;
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.65);
+  cursor: default;
+}
+
+.pw-cell img {
+  display: block;
+  width: 100%;
+  height: auto;
+  -webkit-user-drag: none;
+}
+
+.pw-cell-dragging {
+  opacity: 0.45;
+  cursor: grabbing;
+}
+
+.pw-cell-over {
+  outline: 2px dashed #d9a55f;
+  outline-offset: -2px;
+}
+
+.pw-idx {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  min-width: 20px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(14, 12, 11, 0.6);
+  color: #f3ead9;
+  font-size: 11px;
+  text-align: center;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+/* 「挂墙」角标：提示这张会出现在房间的相框上 */
+.pw-onwall {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(217, 165, 95, 0.9);
+  color: #2c2013;
+  font-size: 10px;
+  letter-spacing: 1px;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.pw-cell:hover .pw-idx,
+.pw-cell:hover .pw-onwall {
+  opacity: 1;
+}
+
+.pw-del {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 11px;
+  line-height: 1;
+  color: #f3ead9;
+  background: rgba(0, 0, 0, 0.62);
+  opacity: 0;
+  transform: scale(0.9);
+  transition: opacity 0.2s ease, transform 0.2s ease, background 0.16s ease;
+}
+
+.pw-cell:hover .pw-del {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.pw-del:hover {
+  background: #b3542e;
+}
+
+/* 末尾的「添加」格子（与照片同宽、虚线框） */
+.pw-cell-add {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 150px;
+  border: 2px dashed rgba(217, 165, 95, 0.4);
+  background: rgba(255, 250, 240, 0.04);
+  color: #8a7a5e;
+  cursor: pointer;
+  filter: none;
+}
+
+.pw-cell-add:hover {
+  transform: scale(1.03);
+  border-color: rgba(217, 165, 95, 0.75);
+  background: rgba(255, 250, 240, 0.08);
+  color: #d9a55f;
+  box-shadow: none;
+}
+
+.pw-add-ico {
+  font-size: 26px;
+  line-height: 1;
+}
+
+.pw-add-t {
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+/* ---------- 底栏提示 ---------- */
+.pw-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 4px 0 8px;
+}
+
+.pw-tip {
+  font-size: 12px;
+  color: rgba(243, 234, 217, 0.5);
+  letter-spacing: 0.5px;
+}
+
+.pw-note {
+  font-size: 12px;
+  color: #d9a55f;
+}
+
+/* ---------- 空状态 ---------- */
+.pw-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  width: min(420px, 80vw);
+  margin: 16vh auto 0;
+  padding: 46px 20px;
+  border: 2px dashed rgba(217, 165, 95, 0.4);
+  border-radius: 18px;
+  background: rgba(255, 250, 240, 0.04);
+  cursor: pointer;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+
+.pw-empty:hover {
+  background: rgba(255, 250, 240, 0.08);
+  border-color: rgba(217, 165, 95, 0.75);
+}
+
+.pw-empty-ico {
+  font-size: 30px;
+  line-height: 1;
+  color: #d9a55f;
+}
+
+.pw-empty-t1 {
+  font-size: 15px;
+  letter-spacing: 1px;
+  color: #f3ead9;
+}
+
+.pw-empty-t2 {
+  font-size: 12px;
+  color: rgba(243, 234, 217, 0.55);
+}
+
+.pw-file {
+  display: none;
+}

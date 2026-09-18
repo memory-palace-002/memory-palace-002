@@ -14,7 +14,7 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { DESK_TOP_Y, DESK_Z, DESK_L } from './Room25D'
 import { stickerize, addStickerBorder, cutWithLasso, flattenImage, stylizeDecal } from './matting'
-import { PRESETS, getPreset, getPresetDecal, ItemModel } from './ItemPresets'
+import { getPreset, getPresetDecal, ItemModel } from './ItemPresets'
 
 /* ---------- 常量 ---------- */
 const STORAGE_KEY = 'memory-room3d/stickers-v1'
@@ -1454,6 +1454,10 @@ export function useItemPlacement({ weather, onWeatherChange }: { weather: string
     setStickers,
     setItems,
     setCropMode,
+    /* 统一的「新增贴片」入口，原本只在内部使用；对外开放给跨设备扫描模块
+     * （features/scan/useScanSession），扫码资产走这条路径入房，
+     * 从而直接获得本文件里已实现的拖拽 / 滚轮缩放 / 墙面吸附 / 落影 / 存档能力。 */
+    addSticker,
     closeCard,
     onFiles,
     onAddImageFile,
@@ -1507,33 +1511,12 @@ export function ItemPlacementScene({ hp }: { hp: ItemPlacementApi }) {
   )
 }
 
-/* ---------- HTML 部分：物品栏 / 上传 / 弹窗 / 进度 / 卡片（绝对定位 overlay） ---------- */
+/* ---------- HTML 部分：弹窗 / 进度 / 卡片（绝对定位 overlay） ----------
+ * 注：物品栏（预设建模 + 添加图片/放一件物品）与操作提示已收进左侧悬浮功能栏
+ * （RoomToolbar，由 MemoryRoom3D 渲染），这里只留弹窗类 UI。 */
 export function ItemPlacementOverlay({ hp }: { hp: ItemPlacementApi }) {
   return (
     <>
-      {/* 物品栏：预设建模一键放入 + 图片变相框物品 */}
-      <div className="mr3d-inventory">
-        <span className="inv-title">物品栏</span>
-        <label className="inv-chip inv-add">
-          ＋ 添加图片
-          <input type="file" accept="image/*" hidden onChange={hp.onAddImageFile} />
-        </label>
-        {PRESETS.map((p) => (
-          <button key={p.id} type="button" className="inv-chip" onClick={() => hp.spawnItem(p.id)} title={`放入${p.label}`}>
-            {p.icon} {p.label}
-          </button>
-        ))}
-      </div>
-
-      {/* 上传按钮（单张，选完弹三选一） */}
-      <label className="mr3d-upload">
-        ＋ 放一件物品
-        <input type="file" accept="image/*" hidden onChange={hp.onFiles} />
-      </label>
-
-      {/* 操作提示 */}
-      <p className="mr3d-hint">拖动物品/贴图随意移动 · 按住 Shift 拖动可前后调整远近 · 按住左键滚动滚轮缩放（Shift+滚轮旋转贴图） · 书本拖进书柜会自动竖着上架，多本同层并排 · 贴图靠近左右墙会自动贴墙吸附 · 点击打开回忆</p>
-
       {/* 三选一弹窗 */}
       {hp.pending && !hp.cropMode && (
         <ChoiceModal src={hp.pending.src} onAuto={hp.runAuto} onManual={hp.runManual} onDirect={hp.runDirect} onClose={hp.closePending} />

@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Room25D —— “小角落”房间 2.5D 伪 3D 版
  *
  * 相机：固定平视（正对房间正面），禁止旋转，只允许轻微左右平移 + 缩放
@@ -9,7 +9,7 @@
  *
  * 依赖：npm install three @react-three/fiber @react-three/drei
  */
-import React, { useEffect, useMemo, useRef } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { Canvas, useThree, useFrame } from '@react-three/fiber'
 import { OrbitControls, RoundedBox } from '@react-three/drei'
@@ -67,7 +67,10 @@ export const DESK_Z = BACK_Z + 0.55 // 桌面所在的 z
 export const DESK_L = 3.0
 
 /* 书桌右侧抽屉柜「最上面一格」——可拉出的那一格。
- * RoomBackground 的抽屉俯视镜头由这几个数推导，改这里镜头会自动跟着走。 */
+ * ⚠️ 必须保持导出：RoomBackground.tsx 会 import 它来推导抽屉俯视镜头，
+ *    删掉这个 export 会让房间页面直接报错。
+ *    抽屉面板、柜内背板（PullOutDrawer 内部）与抽屉俯视镜头共用这一组数值，
+ *    改这里抽屉本体和镜头会自动同步。 */
 export const DESK_DRAWER = {
   x: DESK_L / 2 - 0.5, // 抽屉中心 x = 1.0
   y: 0.66, // 抽屉中心高度（柜体上那两格的上格）
@@ -616,6 +619,99 @@ function Sunlight({ weather }) {
   )
 }
 
+/* ---------- 四季（用户需求：左上角悬浮切换，窗外贴图 + 光线明暗联动） ----------
+ * url    : 窗外照片（public/seasons/，由用户提供的四季参考图重绘成与房间一致的柔和插画质感）
+ * light/intensity: 窗光颜色与强度（rectAreaLight）
+ * ambient/ambientColor/dir: 全局环境光强度/颜色 + 主光强度
+ * bg     : 画布底色（房间外的空隙），随季节微调氛围
+ * 光影差异刻意拉大：春夏明亮（夏最烈）、秋暖橙、冬冷蓝昏暗 */
+export const SEASON_OPTIONS = [
+  { id: 'spring', label: '春', url: '/seasons/spring.png', light: '#e8ffd2', intensity: 2.1, ambient: 1.0, ambientColor: '#f0ffe0', dir: 1.3, bg: '#f2f4e3' },
+  { id: 'summer', label: '夏', url: '/seasons/summer.png', light: '#fff8d8', intensity: 2.9, ambient: 1.15, ambientColor: '#fff3cf', dir: 1.8, bg: '#f6f1dd' },
+  { id: 'autumn', label: '秋', url: '/seasons/autumn.png', light: '#ffc06e', intensity: 1.8, ambient: 0.72, ambientColor: '#ffdba6', dir: 0.95, bg: '#f4e4c8' },
+  { id: 'winter', label: '冬', url: '/seasons/winter.png', light: '#a9c8ee', intensity: 1.0, ambient: 0.45, ambientColor: '#d5e4f6', dir: 0.3, bg: '#e4ecf5' },
+]
+const SEASON_MAP = Object.fromEntries(SEASON_OPTIONS.map((s) => [s.id, s]))
+
+/* 窗外四季照片贴图；未选季节或未加载完成时返回 null（回退到程序化天空，不阻塞场景） */
+function useSeasonTexture(season) {
+  const [tex, setTex] = useState(null)
+  useEffect(() => {
+    if (!season || !SEASON_MAP[season]) {
+      setTex(null)
+      return
+    }
+    let alive = true
+    new THREE.TextureLoader().load(SEASON_MAP[season].url, (t) => {
+      if (!alive) {
+        t.dispose()
+        return
+      }
+      t.colorSpace = THREE.SRGBColorSpace
+      /* 窗外幕布是 (WIN_W+1.4)×(WIN_H+1.2) 的面片，照片接近正方形：
+       * 按图片真实宽高比裁剪 UV（居中取景），避免把方图拉成宽图 */
+      const img = t.image
+      const planeAspect = (WIN_W + 1.4) / (WIN_H + 1.2)
+      const imgAspect = img && img.width && img.height ? img.width / img.height : 1
+      if (imgAspect > planeAspect) {
+        t.repeat.set(planeAspect / imgAspect, 1)
+        t.offset.set((1 - planeAspect / imgAspect) / 2, 0)
+      } else if (imgAspect < planeAspect) {
+        t.repeat.set(1, imgAspect / planeAspect)
+        t.offset.set(0, (1 - imgAspect / planeAspect) / 2)
+      }
+      setTex(t)
+    })
+    return () => {
+      alive = false
+    }
+  }, [season])
+  return tex
+}
+
+/* 照片墙里的图片（dataURL 数组）→ THREE 贴图数组，按顺序一一对应。
+ * 依赖用数组「引用」而不是内容拼接（dataURL 很长，拼串会有上 MB 的额外开销），
+ * 所以调用方要传稳定引用（RoomBackground 存在 state 里；默认值用模块级常量）。 */
+const NO_FRAME_PHOTOS = []
+function usePhotoTextures(urls = NO_FRAME_PHOTOS) {
+  const [texs, setTexs] = useState([])
+  useEffect(() => {
+    if (!urls.length) {
+      setTexs((cur) => (cur.length ? [] : cur)) // 值没变时跳过重渲染
+      return
+    }
+    let alive = true
+    const loader = new THREE.TextureLoader()
+    const made = new Array(urls.length).fill(null)
+    let left = urls.length
+    const done = () => {
+      left -= 1
+      if (left <= 0 && alive) setTexs(made.slice())
+    }
+    urls.forEach((u, i) => {
+      loader.load(
+        u,
+        (t) => {
+          if (!alive) {
+            t.dispose()
+            return
+          }
+          t.colorSpace = THREE.SRGBColorSpace
+          made[i] = t
+          done()
+        },
+        undefined,
+        () => done()
+      )
+    })
+    return () => {
+      alive = false
+      made.forEach((t) => t && t.dispose())
+    }
+  }, [urls])
+  return texs
+}
+
 /* ---------- 环境反射（关键质感来源） ----------
  * 没有环境贴图时，clearcoat(皮革/漆面)与金属只有点光源的一个小亮点，看起来「没质感」。
  * 这里用 three 自带的 RoomEnvironment 离线烘一张环境贴图（纯代码生成，不加载外部资源），
@@ -743,7 +839,7 @@ function WindowWall({ skyMap, lightColor, lightIntensity }) {
   )
 }
 
-/* ---------- 长桌：胡桃木桌面 + 奶油抽屉柜，左抽屉柱 + 右抽屉，中部留空 ---------- */
+/* ---------- 长桌：浅橡木桌面 + 同色抽屉柜，左抽屉柱 + 右抽屉，中部留空 ---------- */
 function Desk({ woodMap, drawerOpen = false, onDrawerToggle }) {
   const kneeL = -0.42 // 桌下留空区左界
   const kneeR = 0.42 // 桌下留空区右界（椅子位置）
@@ -758,7 +854,7 @@ function Desk({ woodMap, drawerOpen = false, onDrawerToggle }) {
         <boxGeometry args={[DESK_L, 0.06, 0.62]} />
         <meshPhysicalMaterial map={woodMap} roughness={0.45} clearcoat={0.3} clearcoatRoughness={0.35} />
       </mesh>
-      {/* 左抽屉柱（与桌面同色：胡桃木纹 + 轻微木头光泽） */}
+      {/* 左抽屉柱（与桌面同色：浅橡木纹 + 轻微木头光泽） */}
       <mesh position={[-DESK_L / 2 + 0.25, 0.5, DESK_Z]} castShadow>
         <boxGeometry args={[0.46, 0.94, 0.56]} />
         <meshPhysicalMaterial map={woodMap} roughness={0.5} clearcoat={0.22} clearcoatRoughness={0.45} />
@@ -1053,10 +1149,10 @@ function PullOutDrawer({ woodMap, open, onToggle }) {
 
   return (
     <group>
-      {/* 柜内空腔背板（深色，抽屉拉出后露出来，模拟柜内阴影） */}
+      {/* 柜内空腔背板（浅橡木内腔，比抽屉面板略深一档；抽屉拉出后露出来，有层次但不发黑） */}
       <mesh position={[DESK_DRAWER.x, DESK_DRAWER.y, DESK_DRAWER.z - 0.1]}>
         <boxGeometry args={[w - 0.05, h - 0.03, 0.16]} />
-        <meshStandardMaterial color="#4b3826" roughness={1} />
+        <meshStandardMaterial color="#dcc194" roughness={0.9} />
       </mesh>
 
       {/* 抽屉本体：整体沿 z 滑出；点它任意一处都能开/关 */}
@@ -1225,20 +1321,63 @@ function PottedPlant() {
   )
 }
 
-/* ---------- 右墙相框墙（参考图右侧的错落木框白芯照片墙；完全平贴墙面） ---------- */
-function WallFrames({ woodMap }) {
-  const frames = [
-    { z: -1.6, y: 2.25, w: 0.42, h: 0.32 },
-    { z: -0.95, y: 2.3, w: 0.3, h: 0.4 },
-    { z: -1.3, y: 1.75, w: 0.38, h: 0.48 },
-    { z: -0.55, y: 1.78, w: 0.32, h: 0.32 },
-    { z: -0.95, y: 2.68, w: 0.34, h: 0.26 },
-  ]
+/* ---------- 右墙相框墙（参考图右侧的错落木框白芯照片墙；完全平贴墙面） ----------
+ * 交互：点击任意相框 → 打开照片墙（镜头推近 + 背景虚化，见 RoomBackground 的 'wall' 阶段）
+ * photos：照片墙里已插入的图片贴图（按顺序对应到相框）；没有照片的相框保持白相纸。
+ */
+export const WALL_FRAME_X = 2.9815 // 相框所在的 x（右墙内侧，留 1.5mm 缝防 z-fighting）
+export const WALL_FRAMES = [
+  { z: -1.6, y: 2.25, w: 0.42, h: 0.32 },
+  { z: -0.95, y: 2.3, w: 0.3, h: 0.4 },
+  { z: -1.3, y: 1.75, w: 0.38, h: 0.48 },
+  { z: -0.55, y: 1.78, w: 0.32, h: 0.32 },
+  { z: -0.95, y: 2.68, w: 0.34, h: 0.26 },
+]
+
+function WallFrames({ woodMap, photos = [], onFrameClick }) {
+  /* 照片按相框内框尺寸做「居中覆盖裁切」UV，避免拉伸变形 */
+  const fitted = useMemo(() => {
+    return WALL_FRAMES.map((f, i) => {
+      const t = photos[i]
+      const img = t && t.image
+      if (!img || !img.width || !img.height) return null
+      const pw = Math.max(0.01, f.w - 0.14)
+      const ph = Math.max(0.01, f.h - 0.14)
+      const boxAspect = pw / ph
+      const imgAspect = img.width / img.height
+      if (imgAspect > boxAspect) {
+        const k = boxAspect / imgAspect
+        t.repeat.set(k, 1)
+        t.offset.set((1 - k) / 2, 0)
+      } else {
+        const k = imgAspect / boxAspect
+        t.repeat.set(1, k)
+        t.offset.set(0, (1 - k) / 2)
+      }
+      return t
+    })
+  }, [photos])
+
   return (
     <group>
-      {frames.map((f, i) => (
-        // rotation.y = -π/2：框面严格平行墙面（背面完全贴墙，绝不穿模）；x 留 1.5mm 缝防 z-fighting
-        <group key={i} position={[2.9815, f.y, f.z]} rotation={[0, -Math.PI / 2, 0]}>
+      {WALL_FRAMES.map((f, i) => (
+        // rotation.y = -π/2：框面严格平行墙面（背面完全贴墙，绝不穿模）
+        <group
+          key={i}
+          position={[WALL_FRAME_X, f.y, f.z]}
+          rotation={[0, -Math.PI / 2, 0]}
+          onClick={(e) => {
+            e.stopPropagation()
+            onFrameClick?.(i)
+          }}
+          onPointerOver={(e) => {
+            e.stopPropagation()
+            document.body.style.cursor = 'pointer'
+          }}
+          onPointerOut={() => {
+            document.body.style.cursor = ''
+          }}
+        >
           <RoundedBox args={[f.w, f.h, 0.035]} radius={0.012} smoothness={3} castShadow>
             <meshStandardMaterial map={woodMap} roughness={0.5} />
           </RoundedBox>
@@ -1247,32 +1386,58 @@ function WallFrames({ woodMap }) {
             <planeGeometry args={[f.w - 0.08, f.h - 0.08]} />
             <meshStandardMaterial color="#fdfbf4" roughness={0.95} />
           </mesh>
+          {/* 照片墙里放进去的照片：贴在相纸正中（比相纸再小一圈，像装裱） */}
+          {fitted[i] && (
+            <mesh position={[0, 0, 0.024]}>
+              <planeGeometry args={[f.w - 0.14, f.h - 0.14]} />
+              <meshStandardMaterial map={fitted[i]} roughness={0.86} />
+            </mesh>
+          )}
         </group>
       ))}
     </group>
   )
 }
 
-/* ---------- 房间整体（weather: 'sunny'|'cloudy'|'rain'|'snow'|''） ---------- */
-export function Room25DModel({ weather = '', drawerOpen = false, onDrawerToggle, ...props }) {
-  /* 木色（用户要求：书桌与地板颜色互换）——
-   * 地板：中棕原木（原书桌色），家具/收边：深棕木（原地板色），椅腿仍为琥珀木 */
+/* ---------- 房间整体（weather: 'sunny'|'cloudy'|'rain'|'snow'|''；season: 'spring'|'summer'|'autumn'|'winter'|''）
+ * framePhotos：照片墙里已插入的图片（dataURL 数组，前 5 张挂到相框墙上）
+ * onFrameClick：点击任意相框的回调（由 RoomBackground 切到 'wall' 阶段） ---------- */
+export function Room25DModel({
+  weather = '',
+  season = '',
+  drawerOpen = false,
+  onDrawerToggle,
+  framePhotos = NO_FRAME_PHOTOS,
+  onFrameClick,
+  ...props
+}) {
+  /* 木色——
+   * 地板：中棕原木，家具/收边：深棕木，椅腿仍为琥珀木
+   * 书桌：浅橡木（用户指定参考图：淡蜂蜜色橡木，桌面/抽屉柜/抽屉同一色） */
   const floorMap = useMemo(() => createWoodTexture([158, 102, 60], 'rgba(96,58,32,0.5)'), [])
   const walnutMap = useMemo(() => createWoodTexture([104, 62, 42], 'rgba(45,24,14,0.6)'), [])
   const amberMap = useMemo(() => createWoodTexture([196, 152, 96], 'rgba(110,80,45,0.4)'), [])
+  const oakMap = useMemo(() => createWoodTexture([226, 196, 152], 'rgba(170,132,86,0.3)'), [])
   const W = WEATHER[weather] || WEATHER_DEFAULT
   const skyMap = useMemo(() => createSkyTexture(W.sky, W.cloud, W.sun), [W])
+  /* 四季：窗外换成对应季节的照片，窗光/全局光随季节明暗变化；未选季节则完全走原天气逻辑 */
+  const seasonTex = useSeasonTexture(season)
+  const frameTexs = usePhotoTextures(framePhotos)
+  const seasonCfg = SEASON_MAP[season]
+  const winMap = seasonTex || skyMap
+  const lightColor = seasonCfg ? seasonCfg.light : W.light
+  const lightIntensity = seasonCfg ? seasonCfg.intensity : W.intensity
   return (
     <group {...props}>
       <Shell floorMap={floorMap} />
-      <WindowWall skyMap={skyMap} lightColor={W.light} lightIntensity={W.intensity} />
+      <WindowWall skyMap={winMap} lightColor={lightColor} lightIntensity={lightIntensity} />
       <Sunlight weather={weather} />
       <Precipitation weather={weather} />
-      <Desk woodMap={walnutMap} drawerOpen={drawerOpen} onDrawerToggle={onDrawerToggle} />
+      <Desk woodMap={oakMap} drawerOpen={drawerOpen} onDrawerToggle={onDrawerToggle} />
       <Chair woodMap={amberMap} />
       <Bookshelf />
       {/* 参考图新增：相框墙（右墙）+ 沙发区（左侧）+ 收边/圆毯 */}
-      <WallFrames woodMap={walnutMap} />
+      <WallFrames woodMap={walnutMap} photos={frameTexs} onFrameClick={onFrameClick} />
       <Sofa woodMap={amberMap} />
       <Pouf />
       <SideTable />
